@@ -1,6 +1,10 @@
 package com.example.beamsyncmobile.ui.navigation
 
+import android.content.Context
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -18,11 +23,29 @@ import com.example.beamsyncmobile.network.ServerConnection
 import com.example.beamsyncmobile.ui.screens.connection.ConnectionScreen
 import com.example.beamsyncmobile.ui.screens.downloads.DownloadsScreen
 import com.example.beamsyncmobile.ui.screens.home.HomeScreen
+import com.example.beamsyncmobile.ui.screens.onboarding.OnboardingScreen
 import com.example.beamsyncmobile.ui.screens.settings.SettingsScreen
 import com.example.beamsyncmobile.ui.screens.uploads.UploadsScreen
 
+private const val PREFS_NAME = "beamsync_prefs"
+private const val KEY_ONBOARDING_DONE = "onboarding_complete"
+
 @Composable
 fun BeamsyncNavGraph() {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    var onboardingDone by remember { mutableStateOf(prefs.getBoolean(KEY_ONBOARDING_DONE, false)) }
+
+    if (!onboardingDone) {
+        OnboardingScreen(
+            onComplete = {
+                prefs.edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
+                onboardingDone = true
+            },
+        )
+        return
+    }
+
     val navController = rememberNavController()
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Scan) }
 
@@ -45,7 +68,9 @@ fun BeamsyncNavGraph() {
         NavHost(
             navController = navController,
             startDestination = Screen.Scan.route,
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
             composable(Screen.Scan.route) {
                 selectedScreen = Screen.Scan

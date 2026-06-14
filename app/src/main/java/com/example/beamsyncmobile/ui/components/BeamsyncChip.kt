@@ -3,6 +3,7 @@ package com.example.beamsyncmobile.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -53,6 +54,7 @@ fun BeamsyncChip(
         modifier = Modifier
             .background(backgroundColor, RoundedCornerShape(0.dp))
             .border(1.dp, borderColor, RoundedCornerShape(0.dp))
+            .defaultMinSize(minHeight = 28.dp)
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
         Text(

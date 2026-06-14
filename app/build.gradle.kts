@@ -67,6 +67,9 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.gson)
 
+    // Image loading
+    implementation(libs.coil)
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

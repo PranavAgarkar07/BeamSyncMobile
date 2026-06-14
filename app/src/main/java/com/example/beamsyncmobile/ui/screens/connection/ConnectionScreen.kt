@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,12 +25,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.beamsyncmobile.R
 import com.example.beamsyncmobile.network.ServerConnection
 import com.example.beamsyncmobile.ui.components.BeamsyncButton
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
@@ -51,6 +55,15 @@ fun ConnectionScreen(
             .padding(BeamsyncSpacing.space8)
             .verticalScroll(rememberScrollState()),
     ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_logo),
+            contentDescription = "BeamSync",
+            tint = androidx.compose.ui.graphics.Color.Unspecified,
+            modifier = Modifier.size(56.dp).align(Alignment.CenterHorizontally),
+        )
+
+        Spacer(Modifier.height(BeamsyncSpacing.space4))
+
         Text(
             text = "CONNECTED",
             color = BeamsyncColors.surfacePositive,

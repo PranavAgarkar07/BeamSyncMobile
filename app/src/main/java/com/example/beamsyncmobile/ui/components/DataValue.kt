@@ -27,7 +27,7 @@ import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
 fun DataValue(
     value: String,
     label: String,
-    valueColor: Color = BeamsyncColors.textAccentCyan,
+    valueColor: Color = BeamsyncColors.textAccentOrange,
     labelColor: Color = BeamsyncColors.textSecondary,
     modifier: Modifier = Modifier,
     valueSize: androidx.compose.ui.unit.TextUnit = 16.sp,

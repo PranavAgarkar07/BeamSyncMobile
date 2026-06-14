@@ -1,14 +1,13 @@
 package com.example.beamsyncmobile.ui.screens.uploads
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,8 +26,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -39,7 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,13 +46,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.beamsyncmobile.network.CurrentConnection
 import com.example.beamsyncmobile.ui.components.BeamsyncButton
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonVariant
+import com.example.beamsyncmobile.ui.components.BeamsyncCircularProgress
 import com.example.beamsyncmobile.ui.components.BeamsyncProgressBar
 import com.example.beamsyncmobile.ui.theme.BeamsyncColors
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 
 private val MIME_TYPES = arrayOf("*/*")
 
@@ -61,6 +65,7 @@ private val MIME_TYPES = arrayOf("*/*")
 fun UploadsScreen(
     viewModel: UploadViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val files by viewModel.files.collectAsState()
     val uploadState by viewModel.uploadState.collectAsState()
     val connectionStatus by viewModel.connectionStatus.collectAsState()
@@ -70,6 +75,21 @@ fun UploadsScreen(
     ) { uris: List<Uri> ->
         if (uris.isNotEmpty()) {
             viewModel.addFiles(uris)
+        }
+    }
+
+    val openFile: (SelectedFile) -> Unit = remember {
+        { file ->
+            val mime = resolveMimeType(file.name, file.mimeType)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(file.uri, mime)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            try {
+                context.startActivity(Intent.createChooser(intent, null))
+            } catch (_: Exception) {
+                // No app can handle this file type
+            }
         }
     }
 
@@ -87,22 +107,20 @@ fun UploadsScreen(
         ConnectionBar(status = connectionStatus)
 
         AnimatedContent(
-            targetState = uploadState,
-            transitionSpec = { fadeIn().togetherWith(fadeOut()) },
+            targetState = uploadState::class.qualifiedName,
+            transitionSpec = { fadeIn(tween(200)).togetherWith(fadeOut(tween(200))) },
             label = "upload-state",
-        ) { state ->
-            when (state) {
+        ) { _ ->
+            when (val state = uploadState) {
                 is UploadState.Idle -> IdleContent(onPickFiles = { filePicker.launch(MIME_TYPES) })
                 is UploadState.Ready -> FileSelectionContent(
                     files = files,
                     onPickFiles = { filePicker.launch(MIME_TYPES) },
                     onRemoveFile = { viewModel.removeFile(it) },
                     onUpload = { viewModel.startUpload() },
+                    onOpenFile = openFile,
                 )
-                is UploadState.Uploading -> UploadingContent(
-                    currentFile = state.currentFile,
-                    fileProgress = state.fileProgress,
-                )
+                is UploadState.Uploading -> UploadingContent(state = state)
                 is UploadState.Complete -> CompleteContent(
                     onSendMore = { viewModel.reset() },
                 )
@@ -187,6 +205,7 @@ private fun FileSelectionContent(
     onPickFiles: () -> Unit,
     onRemoveFile: (Int) -> Unit,
     onUpload: () -> Unit,
+    onOpenFile: (SelectedFile) -> Unit,
 ) {
     val totalSize = files.sumOf { it.size }
     val sizeText = formatBytes(totalSize)
@@ -233,11 +252,11 @@ private fun FileSelectionContent(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
             ) {
-                itemsIndexed(files) { index, file ->
+                itemsIndexed(files, key = { index, _ -> index }) { index, file ->
                     FileRow(
-                        name = file.name,
-                        size = file.size,
+                        file = file,
                         onRemove = { onRemoveFile(index) },
+                        onOpenFile = { onOpenFile(file) },
                     )
                 }
             }
@@ -257,16 +276,17 @@ private fun FileSelectionContent(
 
 @Composable
 private fun FileRow(
-    name: String,
-    size: Long,
+    file: SelectedFile,
     onRemove: () -> Unit,
+    onOpenFile: () -> Unit,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(60.dp)
             .background(BeamsyncColors.surfaceRaised)
-            .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp)),
+            .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
+            .clickable(onClick = onOpenFile),
     ) {
         Row(
             modifier = Modifier
@@ -274,33 +294,49 @@ private fun FileRow(
                 .padding(horizontal = BeamsyncSpacing.space4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Thumbnail or placeholder
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(40.dp)
                     .background(BeamsyncColors.surfaceHigher),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "F",
-                    color = BeamsyncColors.accentPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                )
+                if (file.isImage) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(file.uri)
+                            .crossfade(true)
+                            .size(160)
+                            .build(),
+                        contentDescription = file.name,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(0.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Text(
+                        text = "F",
+                        color = BeamsyncColors.accentPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
             }
 
             Spacer(Modifier.width(BeamsyncSpacing.space3))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = name,
+                    text = file.name,
                     color = BeamsyncColors.textPrimary,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = formatBytes(size),
+                    text = formatBytes(file.size),
                     color = BeamsyncColors.textSecondary,
                     fontSize = 11.sp,
                     fontFamily = FontFamily.Monospace,
@@ -309,13 +345,13 @@ private fun FileRow(
 
             IconButton(
                 onClick = onRemove,
-                modifier = Modifier.size(36.dp),
+                modifier = Modifier.size(48.dp),
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove file",
                     tint = BeamsyncColors.textSecondary,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(20.dp),
                 )
             }
         }
@@ -323,50 +359,111 @@ private fun FileRow(
 }
 
 @Composable
-private fun UploadingContent(
-    currentFile: String,
-    fileProgress: Float,
-) {
+private fun UploadingContent(state: UploadState.Uploading) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(BeamsyncSpacing.space8),
+            .padding(horizontal = BeamsyncSpacing.space8),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Text(
-            text = "UPLOADING",
-            color = BeamsyncColors.accentPrimary,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
-        )
-        Spacer(Modifier.height(BeamsyncSpacing.space8))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(BeamsyncColors.surfaceRaised)
-                .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
-                .padding(BeamsyncSpacing.space4),
+        BeamsyncCircularProgress(
+            progress = state.overallProgress,
+            size = 160.dp,
+            strokeWidth = 8.dp,
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    text = currentFile,
+                    text = "${(state.overallProgress * 100).toInt()}%",
                     color = BeamsyncColors.textPrimary,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(BeamsyncSpacing.space3))
-                BeamsyncProgressBar(progress = fileProgress)
-                Spacer(Modifier.height(BeamsyncSpacing.space2))
-                Text(
-                    text = "${(fileProgress * 100).toInt()}%",
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 12.sp,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                 )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = formatBytes(state.transferredBytes) + " / " + formatBytes(state.totalBytes),
+                    color = BeamsyncColors.textSecondary,
+                    fontSize = 11.sp,
+                    fontFamily = FontFamily.Monospace,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(BeamsyncSpacing.space4))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (state.speedBytesPerSec > 0) {
+                Text(
+                    text = formatSpeed(state.speedBytesPerSec),
+                    color = BeamsyncColors.accentSecondary,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    text = "·",
+                    color = BeamsyncColors.textDisabled,
+                    fontSize = 13.sp,
+                )
+            }
+            if (state.etaSeconds > 0) {
+                Text(
+                    text = "ETA ${formatEta(state.etaSeconds)}",
+                    color = BeamsyncColors.textSecondary,
+                    fontSize = 13.sp,
+                    fontFamily = FontFamily.Monospace,
+                )
+            }
+        }
+
+        Spacer(Modifier.height(BeamsyncSpacing.space8))
+
+        if (state.currentFile.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BeamsyncColors.surfaceRaised)
+                    .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
+                    .padding(BeamsyncSpacing.space4),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = state.currentFile,
+                            color = BeamsyncColors.textPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(BeamsyncSpacing.space3))
+                        Text(
+                            text = "${(state.fileProgress * 100).toInt()}%",
+                            color = BeamsyncColors.accentPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                    Spacer(Modifier.height(BeamsyncSpacing.space2))
+                    BeamsyncProgressBar(progress = state.fileProgress)
+                    Spacer(Modifier.height(BeamsyncSpacing.space2))
+                    Text(
+                        text = "${state.filesCompleted} / ${state.totalFiles} files transferred",
+                        color = BeamsyncColors.textSecondary,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
             }
         }
     }
@@ -444,6 +541,46 @@ private fun ErrorContent(
     }
 }
 
+private fun resolveMimeType(fileName: String, providerMime: String): String {
+    if (providerMime.isNotBlank() &&
+        providerMime != "application/octet-stream" &&
+        providerMime != "*/*"
+    ) return providerMime
+
+    val ext = fileName.substringAfterLast('.', "").lowercase()
+    return when (ext) {
+        "pdf" -> "application/pdf"
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "gif" -> "image/gif"
+        "webp" -> "image/webp"
+        "bmp" -> "image/bmp"
+        "mp4" -> "video/mp4"
+        "mkv" -> "video/x-matroska"
+        "webm" -> "video/webm"
+        "mov" -> "video/quicktime"
+        "avi" -> "video/x-msvideo"
+        "mp3" -> "audio/mpeg"
+        "wav" -> "audio/wav"
+        "ogg" -> "audio/ogg"
+        "flac" -> "audio/flac"
+        "zip" -> "application/zip"
+        "rar" -> "application/vnd.rar"
+        "gz" -> "application/gzip"
+        "tar" -> "application/x-tar"
+        "7z" -> "application/x-7z-compressed"
+        "doc", "docx" -> "application/msword"
+        "xls", "xlsx" -> "application/vnd.ms-excel"
+        "ppt", "pptx" -> "application/vnd.ms-powerpoint"
+        "txt" -> "text/plain"
+        "csv" -> "text/csv"
+        "json" -> "application/json"
+        "html", "htm" -> "text/html"
+        "apk" -> "application/vnd.android.package-archive"
+        else -> providerMime.ifBlank { "application/octet-stream" }
+    }
+}
+
 private fun formatBytes(bytes: Long): String {
     return when {
         bytes < 1024 -> "$bytes B"
@@ -451,4 +588,18 @@ private fun formatBytes(bytes: Long): String {
         bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes.toDouble() / (1024 * 1024))} MB"
         else -> "${"%.2f".format(bytes.toDouble() / (1024 * 1024 * 1024))} GB"
     }
+}
+
+private fun formatSpeed(bytesPerSec: Long): String {
+    return when {
+        bytesPerSec < 1024 -> "$bytesPerSec B/s"
+        bytesPerSec < 1024 * 1024 -> "${bytesPerSec / 1024} KB/s"
+        else -> "${"%.1f".format(bytesPerSec.toDouble() / (1024 * 1024))} MB/s"
+    }
+}
+
+private fun formatEta(seconds: Long): String {
+    val mins = seconds / 60
+    val secs = seconds % 60
+    return if (mins > 0) "${mins}m ${secs}s" else "${secs}s"
 }

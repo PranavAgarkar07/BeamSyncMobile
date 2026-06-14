@@ -20,7 +20,10 @@ data class SelectedFile(
     val name: String,
     val uri: Uri,
     val size: Long,
-)
+    val mimeType: String = "application/octet-stream",
+) {
+    val isImage: Boolean get() = mimeType.startsWith("image/")
+}
 
 sealed class UploadState {
     data object Idle : UploadState()
@@ -29,6 +32,12 @@ sealed class UploadState {
         val overallProgress: Float = 0f,
         val currentFile: String = "",
         val fileProgress: Float = 0f,
+        val transferredBytes: Long = 0L,
+        val totalBytes: Long = 0L,
+        val speedBytesPerSec: Long = 0L,
+        val filesCompleted: Int = 0,
+        val totalFiles: Int = 0,
+        val etaSeconds: Long = 0L,
     ) : UploadState()
     data object Complete : UploadState()
     data class Error(val message: String) : UploadState()
@@ -54,6 +63,7 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
         val contentResolver = getApplication<Application>().contentResolver
         val newFiles = uris.mapNotNull { uri ->
             try {
+                val mimeType = contentResolver.getType(uri) ?: "application/octet-stream"
                 val cursor = contentResolver.query(uri, null, null, null, null)
                 cursor?.use {
                     if (it.moveToFirst()) {
@@ -61,7 +71,7 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                         val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
                         val name = if (nameIndex >= 0) it.getString(nameIndex) else "unknown"
                         val size = if (sizeIndex >= 0) it.getLong(sizeIndex) else -1L
-                        SelectedFile(name = name, uri = uri, size = size)
+                        SelectedFile(name = name, uri = uri, size = size, mimeType = mimeType)
                     } else null
                 }
             } catch (e: Exception) {
@@ -98,10 +108,55 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
         val files = _files.value
         if (files.isEmpty()) return
 
+        val totalBytes = files.sumOf { it.size }
+        val fileSizes = files.map { it.size }
         val contentResolver = getApplication<Application>().contentResolver
         val specs = files.map { UploadFileSpec(name = it.name, uri = it.uri, size = it.size) }
 
-        _uploadState.value = UploadState.Uploading()
+        var filesCompleted = 0
+        var transferredBeforeCurrent = 0L
+        var smoothedSpeed = 0.0
+        var lastBytes = 0L
+        var lastTime = System.nanoTime()
+        var lastEmitTime = 0L
+        val alpha = 0.3
+
+        fun updateProgress(fileName: String, fileProgress: Float, fileSize: Long) {
+            val transferred = transferredBeforeCurrent + (fileSize * fileProgress).toLong()
+            val overallProgress = if (totalBytes > 0) transferred.toFloat() / totalBytes.toFloat() else 0f
+
+            val now = System.nanoTime()
+            val elapsed = now - lastTime
+            if (elapsed > 250_000_000L && transferred > lastBytes) {
+                val instantSpeed = (transferred - lastBytes).toDouble() / (elapsed / 1_000_000_000.0)
+                smoothedSpeed = alpha * instantSpeed + (1.0 - alpha) * smoothedSpeed
+                lastBytes = transferred
+                lastTime = now
+            }
+
+            if (now - lastEmitTime < 100_000_000L) return
+            lastEmitTime = now
+
+            val speed = smoothedSpeed.toLong()
+            val eta = if (speed > 0) (totalBytes - transferred) / speed else 0L
+
+            _uploadState.value = UploadState.Uploading(
+                overallProgress = overallProgress,
+                currentFile = fileName,
+                fileProgress = fileProgress,
+                transferredBytes = transferred,
+                totalBytes = totalBytes,
+                speedBytesPerSec = speed,
+                filesCompleted = filesCompleted,
+                totalFiles = files.size,
+                etaSeconds = eta,
+            )
+        }
+
+        _uploadState.value = UploadState.Uploading(
+            totalBytes = totalBytes,
+            totalFiles = files.size,
+        )
 
         uploadJob = viewModelScope.launch {
             val result = client.upload(
@@ -109,12 +164,17 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                 files = specs,
                 contentResolver = contentResolver,
                 onFileProgress = { fileName, progress ->
-                    _uploadState.value = UploadState.Uploading(
-                        currentFile = fileName,
-                        fileProgress = progress,
-                    )
+                    val idx = specs.indexOfFirst { it.name == fileName }
+                    val fileSize = if (idx >= 0) fileSizes[idx] else 0L
+                    updateProgress(fileName, progress, fileSize)
                 },
-                onFileComplete = { _ -> },
+                onFileComplete = { fileName ->
+                    val idx = specs.indexOfFirst { it.name == fileName }
+                    if (idx >= 0) {
+                        transferredBeforeCurrent += fileSizes[idx]
+                    }
+                    filesCompleted++
+                },
             )
 
             result.fold(
