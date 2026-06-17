@@ -5,9 +5,12 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,15 +28,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,12 +54,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.beamsyncmobile.network.CurrentConnection
+import com.example.beamsyncmobile.ui.components.AnimatedSuccessContent
 import com.example.beamsyncmobile.ui.components.BeamsyncButton
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonVariant
 import com.example.beamsyncmobile.ui.components.BeamsyncCircularProgress
 import com.example.beamsyncmobile.ui.components.BeamsyncProgressBar
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -102,7 +107,7 @@ fun UploadsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BeamsyncColors.surfaceBase),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         ConnectionBar(status = connectionStatus)
 
@@ -139,7 +144,7 @@ private fun ConnectionBar(status: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(if (isConnected) BeamsyncColors.surfacePositive.copy(alpha = 0.15f) else BeamsyncColors.surfaceCritical.copy(alpha = 0.1f))
+            .background(if (isConnected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
             .padding(horizontal = BeamsyncSpacing.space4, vertical = 6.dp),
     ) {
         Row(
@@ -150,14 +155,14 @@ private fun ConnectionBar(status: String) {
                 modifier = Modifier
                     .size(8.dp)
                     .background(
-                        if (isConnected) BeamsyncColors.surfacePositive else BeamsyncColors.surfaceCritical,
-                        RoundedCornerShape(0.dp),
+                        if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        MaterialTheme.shapes.small,
                     ),
             )
             Text(
                 text = "DESKTOP: $status",
-                color = if (isConnected) BeamsyncColors.surfacePositive else BeamsyncColors.surfaceCritical,
-                fontSize = 11.sp,
+                color = if (isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
             )
@@ -176,17 +181,16 @@ private fun IdleContent(onPickFiles: () -> Unit) {
     ) {
         Text(
             text = "SEND FILES",
-            color = BeamsyncColors.textPrimary,
-            fontSize = 28.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space3))
         Text(
             text = "Select files to transfer\nto your desktop",
-            color = BeamsyncColors.textSecondary,
-            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space8))
         BeamsyncButton(
@@ -223,14 +227,14 @@ private fun FileSelectionContent(
             Column {
                 Text(
                     text = "SEND FILES",
-                    color = BeamsyncColors.textPrimary,
-                    fontSize = 24.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = "${files.size} files · $sizeText total",
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                 )
             }
@@ -284,8 +288,8 @@ private fun FileRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp)
-            .background(BeamsyncColors.surfaceRaised)
-            .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
             .clickable(onClick = onOpenFile),
     ) {
         Row(
@@ -298,7 +302,7 @@ private fun FileRow(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(BeamsyncColors.surfaceHigher),
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow),
                 contentAlignment = Alignment.Center,
             ) {
                 if (file.isImage) {
@@ -311,14 +315,14 @@ private fun FileRow(
                         contentDescription = file.name,
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(0.dp)),
+                            .clip(MaterialTheme.shapes.small),
                         contentScale = ContentScale.Crop,
                     )
                 } else {
                     Text(
                         text = "F",
-                        color = BeamsyncColors.accentPrimary,
-                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
                     )
@@ -330,15 +334,15 @@ private fun FileRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = file.name,
-                    color = BeamsyncColors.textPrimary,
-                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = formatBytes(file.size),
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                 )
             }
@@ -350,7 +354,7 @@ private fun FileRow(
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove file",
-                    tint = BeamsyncColors.textSecondary,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -375,16 +379,15 @@ private fun UploadingContent(state: UploadState.Uploading) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "${(state.overallProgress * 100).toInt()}%",
-                    color = BeamsyncColors.textPrimary,
-                    fontSize = 36.sp,
-                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.displaySmall,
                     fontFamily = FontFamily.Monospace,
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     text = formatBytes(state.transferredBytes) + " / " + formatBytes(state.totalBytes),
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
                 )
             }
@@ -399,22 +402,22 @@ private fun UploadingContent(state: UploadState.Uploading) {
             if (state.speedBytesPerSec > 0) {
                 Text(
                     text = formatSpeed(state.speedBytesPerSec),
-                    color = BeamsyncColors.accentSecondary,
-                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.secondary,
+                    style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "·",
-                    color = BeamsyncColors.textDisabled,
-                    fontSize = 13.sp,
+                    text = "\u00B7",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
             if (state.etaSeconds > 0) {
                 Text(
                     text = "ETA ${formatEta(state.etaSeconds)}",
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall,
                     fontFamily = FontFamily.Monospace,
                 )
             }
@@ -426,8 +429,8 @@ private fun UploadingContent(state: UploadState.Uploading) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(BeamsyncColors.surfaceRaised)
-                    .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium)
                     .padding(BeamsyncSpacing.space4),
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {
@@ -438,8 +441,8 @@ private fun UploadingContent(state: UploadState.Uploading) {
                     ) {
                         Text(
                             text = state.currentFile,
-                            color = BeamsyncColors.textPrimary,
-                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -448,8 +451,8 @@ private fun UploadingContent(state: UploadState.Uploading) {
                         Spacer(Modifier.width(BeamsyncSpacing.space3))
                         Text(
                             text = "${(state.fileProgress * 100).toInt()}%",
-                            color = BeamsyncColors.accentPrimary,
-                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
                         )
@@ -459,8 +462,8 @@ private fun UploadingContent(state: UploadState.Uploading) {
                     Spacer(Modifier.height(BeamsyncSpacing.space2))
                     Text(
                         text = "${state.filesCompleted} / ${state.totalFiles} files transferred",
-                        color = BeamsyncColors.textSecondary,
-                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
                         fontFamily = FontFamily.Monospace,
                     )
                 }
@@ -471,36 +474,32 @@ private fun UploadingContent(state: UploadState.Uploading) {
 
 @Composable
 private fun CompleteContent(onSendMore: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(BeamsyncSpacing.space8),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = "UPLOAD COMPLETE",
-            color = BeamsyncColors.surfacePositive,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 2.sp,
+    var showButton by remember { mutableStateOf(false) }
+    Box(modifier = Modifier.fillMaxSize()) {
+        AnimatedSuccessContent(
+            title = "UPLOAD COMPLETE",
+            subtitle = "Files transferred successfully\nto your desktop",
+            onComplete = { showButton = true },
         )
-        Spacer(Modifier.height(BeamsyncSpacing.space3))
-        Text(
-            text = "Files transferred successfully\nto your desktop",
-            color = BeamsyncColors.textSecondary,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
-        )
-        Spacer(Modifier.height(BeamsyncSpacing.space8))
-        BeamsyncButton(
-            text = "SEND MORE FILES",
-            variant = BeamsyncButtonVariant.Primary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
-            onClick = onSendMore,
-        )
+        AnimatedVisibility(
+            visible = showButton,
+            enter = fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing))
+                .plus(slideInVertically(
+                    animationSpec = tween(400, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 2 },
+                )),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(BeamsyncSpacing.space8),
+        ) {
+            BeamsyncButton(
+                text = "SEND MORE FILES",
+                variant = BeamsyncButtonVariant.Primary,
+                size = BeamsyncButtonSize.Large,
+                fullWidth = true,
+                onClick = onSendMore,
+            )
+        }
     }
 }
 
@@ -518,17 +517,16 @@ private fun ErrorContent(
     ) {
         Text(
             text = "UPLOAD FAILED",
-            color = BeamsyncColors.surfaceCritical,
-            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space3))
         Text(
             text = message,
-            color = BeamsyncColors.textSecondary,
-            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space8))
         BeamsyncButton(

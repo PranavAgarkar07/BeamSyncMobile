@@ -1,11 +1,22 @@
 package com.example.beamsyncmobile.ui.navigation
 
-sealed class Screen(val route: String, val label: String) {
-    data object Scan : Screen("scan", "SCAN")
-    data object Connection : Screen("connection/{scheme}/{host}/{port}/{token}", "CONNECTED")
-    data object Downloads : Screen("downloads", "RECEIVE")
-    data object Uploads : Screen("uploads", "SEND")
-    data object Settings : Screen("settings", "SETTINGS")
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
+
+sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
+    data object Scan       : Screen("scan",       "SCAN",    Icons.Default.QrCodeScanner)
+    data object Downloads  : Screen("downloads",  "RECEIVE", Icons.Default.CloudDownload)
+    data object Uploads    : Screen("uploads",    "SEND",    Icons.Default.CloudUpload)
+    data object Settings   : Screen("settings",   "SETTINGS",Icons.Default.Settings)
+    data object Connection : Screen(
+        "connection/{scheme}/{host}/{port}/{token}",
+        "CONNECTED",
+        Icons.Default.QrCodeScanner,
+    )
 }
 
 data class BottomNavItem(val screen: Screen, val label: String)

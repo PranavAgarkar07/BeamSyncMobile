@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">BeamSyncMobile</string>
+    <string name="camera_access_required">Camera access required</string>
+    <string name="camera_access_description">BeamSync needs camera access to scan\ndesktop QR codes and connect to your device</string>
+    <string name="grant_camera_access">Grant camera access</string>
+    <string name="camera_permission_denied">Camera permission denied</string>
+    <string name="camera_permission_denied_description">Camera access is permanently blocked.\nEnable it in Settings to scan QR codes.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="try_again">Try again</string>
 </resources>

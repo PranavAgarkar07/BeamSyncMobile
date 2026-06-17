@@ -1,6 +1,7 @@
 package com.example.beamsyncmobile.ui.screens.scan
 
 import android.view.ViewGroup
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -9,6 +10,8 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -20,11 +23,19 @@ import java.util.concurrent.Executors
 @Composable
 fun CameraPreview(
     modifier: Modifier = Modifier,
+    torchEnabled: Boolean = false,
     onAnalyze: (ImageProxy) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val cameraRef = remember { mutableStateOf<Camera?>(null) }
+
+    LaunchedEffect(torchEnabled) {
+        try {
+            cameraRef.value?.cameraControl?.enableTorch(torchEnabled)
+        } catch (_: Exception) { }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -64,12 +75,13 @@ fun CameraPreview(
 
                 try {
                     cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
+                    val camera = cameraProvider.bindToLifecycle(
                         lifecycleOwner,
                         cameraSelector,
                         preview,
                         imageAnalysis,
                     )
+                    cameraRef.value = camera
                 } catch (e: Exception) {
                     android.util.Log.e("CameraPreview", "Camera bind failed", e)
                 }

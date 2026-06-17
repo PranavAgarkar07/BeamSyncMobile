@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,15 +28,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.beamsyncmobile.ui.components.BeamsyncButton
-import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
-import com.example.beamsyncmobile.ui.components.BeamsyncButtonVariant
-import com.example.beamsyncmobile.ui.components.BeamsyncChip
-import com.example.beamsyncmobile.ui.components.BeamsyncChipVariant
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
 
 @Composable
@@ -42,27 +41,29 @@ fun SettingsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BeamsyncColors.surfaceBase)
+            .background(MaterialTheme.colorScheme.background)
             .padding(BeamsyncSpacing.space8)
             .verticalScroll(rememberScrollState()),
     ) {
         Text(
             text = "SETTINGS",
-            color = BeamsyncColors.textPrimary,
-            fontSize = 28.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
+            letterSpacing = (-0.5).sp,
         )
 
-        Spacer(Modifier.height(BeamsyncSpacing.space6))
+        Spacer(Modifier.height(2.dp))
 
-        // Transfer mode section
-        Text(
-            text = "TRANSFER MODE",
-            color = BeamsyncColors.textSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 1.sp,
+        Box(
+            modifier = Modifier
+                .size(width = 48.dp, height = 2.dp)
+                .background(MaterialTheme.colorScheme.primary),
         )
+
+        Spacer(Modifier.height(BeamsyncSpacing.space8))
+
+        SectionLabel("TRANSFER MODE")
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 
         val modes = listOf("Accept All", "Ask First", "Block All")
@@ -75,49 +76,47 @@ fun SettingsScreen() {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp)
+                        .height(44.dp)
                         .background(
-                            if (isSelected) BeamsyncColors.accentPrimary else BeamsyncColors.surfaceRaised,
-                            shape = RoundedCornerShape(0.dp),
+                            if (isSelected) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surface,
+                            shape = MaterialTheme.shapes.medium,
                         )
                         .border(
                             1.dp,
-                            if (isSelected) BeamsyncColors.accentPrimary else BeamsyncColors.strokeDefault,
-                            RoundedCornerShape(0.dp),
+                            if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                            else MaterialTheme.colorScheme.outline,
+                            MaterialTheme.shapes.medium,
                         )
                         .clickable { transferMode = mode },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = mode.uppercase(),
-                        color = if (isSelected) BeamsyncColors.surfaceBase else BeamsyncColors.textSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                         letterSpacing = 0.5.sp,
                     )
                 }
             }
         }
 
-        Spacer(Modifier.height(BeamsyncSpacing.space6))
+        Spacer(Modifier.height(BeamsyncSpacing.space8))
 
-        // Save path section
-        Text(
-            text = "SAVE LOCATION",
-            color = BeamsyncColors.textSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 1.sp,
-        )
+        SectionLabel("SAVE LOCATION")
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .background(BeamsyncColors.surfaceRaised)
-                .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
-                .clickable { /* TODO: open SAF directory picker */ }
+                .height(52.dp)
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    MaterialTheme.shapes.medium,
+                )
+                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium)
+                .clickable { }
                 .padding(horizontal = BeamsyncSpacing.space4),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -126,61 +125,87 @@ fun SettingsScreen() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "/Downloads/BeamSync",
-                    color = BeamsyncColors.textPrimary,
-                    fontSize = 14.sp,
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                )
-                Text(
-                    text = "CHANGE",
-                    color = BeamsyncColors.accentPrimary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.size(BeamsyncSpacing.space2))
+                    Text(
+                        text = "/Downloads/BeamSync",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp),
                 )
             }
         }
 
-        Spacer(Modifier.height(BeamsyncSpacing.space6))
+        Spacer(Modifier.height(BeamsyncSpacing.space8))
 
-        // About section
-        Text(
-            text = "ABOUT",
-            color = BeamsyncColors.textSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = 1.sp,
-        )
+        SectionLabel("ABOUT")
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(BeamsyncColors.surfaceRaised)
-                .border(1.dp, BeamsyncColors.strokeDefault, RoundedCornerShape(0.dp))
-                .padding(BeamsyncSpacing.space4),
+                .background(
+                    MaterialTheme.colorScheme.surface,
+                    MaterialTheme.shapes.medium,
+                )
+                .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium),
         ) {
             Column {
-                Text(
-                    text = "BeamSync Mobile",
-                    color = BeamsyncColors.textPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(MaterialTheme.colorScheme.primary),
                 )
-                Spacer(Modifier.height(BeamsyncSpacing.space1))
-                Text(
-                    text = "v1.0.0",
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 14.sp,
-                )
-                Spacer(Modifier.height(BeamsyncSpacing.space1))
-                Text(
-                    text = "Secure peer-to-peer file transfer",
-                    color = BeamsyncColors.textSecondary,
-                    fontSize = 12.sp,
-                )
+                Column(modifier = Modifier.padding(BeamsyncSpacing.space4)) {
+                    Text(
+                        text = "BeamSync Mobile",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(BeamsyncSpacing.space1))
+                    Text(
+                        text = "v1.0.0",
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.height(BeamsyncSpacing.space1))
+                    Text(
+                        text = "Secure peer-to-peer file transfer",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
             }
         }
+
+        Spacer(Modifier.height(BeamsyncSpacing.space6))
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.5.sp,
+    )
 }

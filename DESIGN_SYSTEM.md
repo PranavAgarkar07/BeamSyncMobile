@@ -2,6 +2,14 @@
 ## Specification Document v1.0
 *Dr. Elias Vance, Cognitive Architect*
 
+> **M3 Migration (June 2026):** The codebase has migrated to Material Design 3 theming.
+> - **Colors** → M3 `ColorScheme` slots (see `Color.kt` `BeamsyncColorScheme`)
+> - **Typography** → 15-slot M3 `Typography` with sans-serif body + monospace labels
+> - **Shapes** → M3 `Shapes` at 4dp/8dp/12dp/16dp (small/medium/large/extraLarge)
+> - **Bottom nav** → M3 `NavigationBar` (AeroBrutalistShape removed)
+> - **Components** → Hybrid: `BeamsyncButton`/`Card`/`Chip`/`Dialog` wrap M3 APIs
+> - All design philosophy, spacing (4px grid), motion specs, and accessibility rules below remain unchanged and actively enforced.
+
 ---
 
 ## 1. Design Philosophy: *Signal Over Decoration*

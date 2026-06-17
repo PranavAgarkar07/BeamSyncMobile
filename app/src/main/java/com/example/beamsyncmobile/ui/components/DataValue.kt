@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,20 +16,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
-import com.example.beamsyncmobile.ui.theme.BeamsyncTextStyles
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
-
-// Large data value (monospace) with small label underneath
-// This pairing creates rapid hierarchical parsing —
-// periphery catches the number, fovea confirms the label
 
 @Composable
 fun DataValue(
     value: String,
     label: String,
-    valueColor: Color = BeamsyncColors.textAccentOrange,
-    labelColor: Color = BeamsyncColors.textSecondary,
+    valueColor: Color = MaterialTheme.colorScheme.secondary,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     modifier: Modifier = Modifier,
     valueSize: androidx.compose.ui.unit.TextUnit = 16.sp,
 ) {
@@ -38,8 +33,8 @@ fun DataValue(
     ) {
         Text(
             text = value,
-            style = if (valueSize == 16.sp) BeamsyncTextStyles.dataBase
-                    else BeamsyncTextStyles.dataLg,
+            style = if (valueSize == 16.sp) MaterialTheme.typography.labelLarge
+                    else MaterialTheme.typography.headlineSmall,
             color = valueColor,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -50,16 +45,13 @@ fun DataValue(
         Text(
             text = label,
             color = labelColor,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.labelSmall,
             textAlign = TextAlign.Center,
-            letterSpacing = 0.5.sp,
             maxLines = 1,
         )
     }
 }
 
-// Row of DataValue pairs for telemetry displays
 @Composable
 fun DataValueRow(
     values: List<Pair<String, String>>,

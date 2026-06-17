@@ -9,16 +9,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
 
 @Composable
@@ -30,7 +28,7 @@ fun EmptyStateScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BeamsyncColors.surfaceBase)
+            .background(MaterialTheme.colorScheme.background)
             .padding(BeamsyncSpacing.space8),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -38,24 +36,22 @@ fun EmptyStateScreen(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = BeamsyncColors.textDisabled,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
             modifier = Modifier.size(64.dp),
         )
         Spacer(Modifier.height(BeamsyncSpacing.space6))
         Text(
             text = title,
-            color = BeamsyncColors.textPrimary,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space2))
         Text(
             text = subtitle,
-            color = BeamsyncColors.textSecondary,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
         )
     }
 }

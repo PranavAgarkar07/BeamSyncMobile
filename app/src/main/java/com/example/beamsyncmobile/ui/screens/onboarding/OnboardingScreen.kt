@@ -5,7 +5,9 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,13 +17,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.NetworkCheck
@@ -38,20 +39,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.util.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import com.example.beamsyncmobile.R
 import com.example.beamsyncmobile.ui.components.BeamsyncButton
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
 import com.example.beamsyncmobile.ui.components.BeamsyncButtonVariant
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
@@ -69,9 +70,9 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BeamsyncColors.surfaceBase),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        BackgroundGrid()
+        RadialGlowBackground(page = visiblePage)
 
         HorizontalPager(
             state = pagerState,
@@ -97,9 +98,8 @@ fun OnboardingScreen(onComplete: () -> Unit) {
         ) {
             Text(
                 text = "SKIP",
-                color = BeamsyncColors.textSecondary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
                 letterSpacing = 1.5.sp,
                 modifier = Modifier
                     .clickable(onClick = onComplete)
@@ -141,27 +141,28 @@ fun OnboardingScreen(onComplete: () -> Unit) {
 }
 
 @Composable
-private fun BackgroundGrid() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        repeat(3) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                repeat(3) {
-                    Box(
-                        modifier = Modifier
-                            .size(1.dp)
-                            .background(BeamsyncColors.surfaceHigher.copy(alpha = 0.3f)),
-                    )
-                }
-            }
-        }
+private fun RadialGlowBackground(page: Int) {
+    val glowColors = listOf(
+        MaterialTheme.colorScheme.primary,
+        MaterialTheme.colorScheme.secondary,
+        MaterialTheme.colorScheme.tertiary,
+    )
+    val glowColor = glowColors[page.coerceIn(0, glowColors.size - 1)]
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    glowColor.copy(alpha = 0.12f),
+                    glowColor.copy(alpha = 0.04f),
+                    Color.Transparent,
+                ),
+                center = Offset(size.width / 2f, size.height * 0.28f),
+                radius = size.width * 0.75f,
+            ),
+            radius = size.width * 0.75f,
+            center = Offset(size.width / 2f, size.height * 0.28f),
+        )
     }
 }
 
@@ -172,8 +173,17 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
             icon = {
                 Box(
                     modifier = Modifier
-                        .size(140.dp)
-                        .background(BeamsyncColors.surfaceRaised, RoundedCornerShape(0.dp)),
+                        .size(148.dp)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    MaterialTheme.colorScheme.surface,
+                                ),
+                            ),
+                            MaterialTheme.shapes.medium,
+                        )
+                        .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
@@ -187,19 +197,18 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
             title = "WELCOME TO",
             titleHighlight = "BEAMSYNC",
             subtitle = "Transfer files between your phone and PC wirelessly. Fast, secure, and dead simple.",
+            accentColor = MaterialTheme.colorScheme.primary,
         ),
         OnboardingPage(
             icon = {
-                Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .background(BeamsyncColors.surfaceRaised, RoundedCornerShape(0.dp)),
-                    contentAlignment = Alignment.Center,
+                GradientIconBox(
+                    gradientStart = MaterialTheme.colorScheme.primary,
+                    gradientEnd = MaterialTheme.colorScheme.tertiary,
                 ) {
                     Icon(
                         imageVector = Icons.Filled.CastConnected,
                         contentDescription = null,
-                        tint = BeamsyncColors.accentPrimary,
+                        tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(72.dp),
                     )
                 }
@@ -207,28 +216,26 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
             title = "SAME",
             titleHighlight = "NETWORK",
             subtitle = "Connect your phone to the same WiFi network as your desktop computer. They need to see each other.",
+            accentColor = MaterialTheme.colorScheme.primary,
         ),
         OnboardingPage(
             icon = {
-                Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .background(BeamsyncColors.surfaceRaised, RoundedCornerShape(0.dp)),
-                    contentAlignment = Alignment.Center,
+                GradientIconBox(
+                    gradientStart = MaterialTheme.colorScheme.secondary,
+                    gradientEnd = MaterialTheme.colorScheme.primary,
                 ) {
-                    Box(modifier = Modifier.size(72.dp), contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Filled.NetworkCheck,
-                            contentDescription = null,
-                            tint = BeamsyncColors.accentSecondary,
-                            modifier = Modifier.size(72.dp),
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Filled.NetworkCheck,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(72.dp),
+                    )
                 }
             },
             title = "5GHz",
             titleHighlight = "HOTSPOT",
             subtitle = "If using a mobile hotspot, switch the band to 5GHz in your phone's settings for maximum transfer speeds.",
+            accentColor = MaterialTheme.colorScheme.secondary,
         ),
     )
 
@@ -236,7 +243,7 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
     val pageProgress = (1f - pageOffset.absoluteValue).coerceIn(0f, 1f)
 
     val enterScale by animateFloatAsState(
-        targetValue = if (isVisible) 1f else 0.85f,
+        targetValue = if (isVisible) 1f else 0.88f,
         animationSpec = tween(500),
         label = "enterScale",
     )
@@ -247,12 +254,12 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
     )
     val titleAlpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(400, delayMillis = 150),
+        animationSpec = tween(400, delayMillis = 120),
         label = "titleAlpha",
     )
     val subtitleAlpha by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
-        animationSpec = tween(400, delayMillis = 300),
+        animationSpec = tween(400, delayMillis = 260),
         label = "subtitleAlpha",
     )
 
@@ -260,11 +267,11 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
         modifier = Modifier
             .fillMaxSize()
             .graphicsLayer {
-                alpha = lerp(0.7f, 1f, pageProgress)
+                alpha = lerp(0.65f, 1f, pageProgress)
                 cameraDistance = 12f * density
             }
             .padding(horizontal = BeamsyncSpacing.space8)
-            .padding(top = 100.dp, bottom = 140.dp),
+            .padding(top = 100.dp, bottom = 160.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -278,41 +285,64 @@ private fun PageContent(page: Int, isVisible: Boolean, pageOffset: Float) {
 
         Spacer(Modifier.height(BeamsyncSpacing.space8))
 
-        Text(
-            text = data.title,
-            color = BeamsyncColors.textSecondary,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            letterSpacing = 3.sp,
-            modifier = Modifier.alpha(titleAlpha),
-        )
+            Text(
+                text = data.title,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                letterSpacing = 3.sp,
+                modifier = Modifier.alpha(titleAlpha),
+            )
 
-        Spacer(Modifier.height(BeamsyncSpacing.space1))
+        Spacer(Modifier.height(4.dp))
 
-        Text(
-            text = data.titleHighlight,
-            color = BeamsyncColors.textPrimary,
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            lineHeight = 36.sp,
-            letterSpacing = -.5.sp,
-            modifier = Modifier.alpha(titleAlpha),
-        )
+            Text(
+                text = data.titleHighlight,
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.displaySmall,
+                textAlign = TextAlign.Center,
+                letterSpacing = (-1).sp,
+                modifier = Modifier.alpha(titleAlpha),
+            )
 
         Spacer(Modifier.height(BeamsyncSpacing.space4))
 
-        Text(
-            text = data.subtitle,
-            color = BeamsyncColors.textSecondary,
-            fontSize = 15.sp,
-            textAlign = TextAlign.Center,
-            lineHeight = 22.sp,
-            modifier = Modifier.alpha(subtitleAlpha),
-        )
+            Text(
+                text = data.subtitle,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.alpha(subtitleAlpha),
+            )
     }
 }
+
+@Composable
+private fun GradientIconBox(
+    gradientStart: Color,
+    gradientEnd: Color,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(148.dp)
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        gradientStart.copy(alpha = 0.15f),
+                        gradientEnd.copy(alpha = 0.08f),
+                    ),
+                ),
+                MaterialTheme.shapes.medium,
+            )
+            .border(1.dp, gradientStart.copy(alpha = 0.3f), MaterialTheme.shapes.medium),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+
 
 @Composable
 private fun PageIndicator(
@@ -328,12 +358,12 @@ private fun PageIndicator(
         repeat(pageCount) { index ->
             val isSelected = index == currentPage
             val animatedWidth by animateFloatAsState(
-                targetValue = if (isSelected) 28f else 8f,
+                targetValue = if (isSelected) 32f else 8f,
                 animationSpec = tween(300),
                 label = "dotWidth",
             )
             val animatedAlpha by animateFloatAsState(
-                targetValue = if (isSelected) 1f else 0.35f,
+                targetValue = if (isSelected) 1f else 0.25f,
                 animationSpec = tween(300),
                 label = "dotAlpha",
             )
@@ -343,9 +373,9 @@ private fun PageIndicator(
                     .height(3.dp)
                     .alpha(animatedAlpha)
                     .background(
-                        if (isSelected) BeamsyncColors.accentPrimary
-                        else BeamsyncColors.strokeDefault,
-                        RoundedCornerShape(0.dp),
+                        if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.outlineVariant,
+                        MaterialTheme.shapes.medium,
                     ),
             )
         }
@@ -357,4 +387,5 @@ private data class OnboardingPage(
     val title: String,
     val titleHighlight: String,
     val subtitle: String,
+    val accentColor: Color,
 )

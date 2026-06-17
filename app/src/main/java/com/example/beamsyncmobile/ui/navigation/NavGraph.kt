@@ -1,11 +1,15 @@
 package com.example.beamsyncmobile.ui.navigation
 
 import android.content.Context
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,27 +54,52 @@ fun BeamsyncNavGraph() {
     var selectedScreen by remember { mutableStateOf<Screen>(Screen.Scan) }
 
     Scaffold(
-        containerColor = androidx.compose.ui.graphics.Color.Transparent,
         bottomBar = {
-            BeamsyncBottomNav(
-                items = Screens.items,
-                selectedScreen = selectedScreen,
-                onScreenSelected = { screen ->
-                    selectedScreen = screen
-                    navController.navigate(screen.route) {
-                        popUpTo(Screen.Scan.route) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                },
-            )
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+            ) {
+                Screens.items.forEach { item ->
+                    val isSelected = item.screen == selectedScreen
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            selectedScreen = item.screen
+                            navController.navigate(item.screen.route) {
+                                popUpTo(Screen.Scan.route) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = item.screen.icon,
+                                contentDescription = item.label,
+                            )
+                        },
+                        label = {
+                            Text(
+                                text = item.label,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        ),
+                    )
+                }
+            }
         },
-    ) { innerPadding ->
+    ) { padding ->
         NavHost(
             navController = navController,
             startDestination = Screen.Scan.route,
             modifier = Modifier
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(bottom = innerPadding.calculateBottomPadding()),
+                .fillMaxSize()
+                .padding(padding),
         ) {
             composable(Screen.Scan.route) {
                 selectedScreen = Screen.Scan
