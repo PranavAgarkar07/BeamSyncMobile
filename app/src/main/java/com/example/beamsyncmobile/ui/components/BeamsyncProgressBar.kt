@@ -18,11 +18,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
+
 
 @Composable
 fun BeamsyncProgressBar(
@@ -44,13 +45,12 @@ fun BeamsyncProgressBar(
             .height(height)
             .background(trackColor, MaterialTheme.shapes.small),
     ) {
-        // TODO: Replace with M3 tonal palette when available
         val fill: Brush = if (useGradient) {
             Brush.horizontalGradient(
                 colors = listOf(
-                    BeamsyncColors.accentGradientStart,
-                    BeamsyncColors.accentGradientMid,
-                    BeamsyncColors.accentGradientEnd,
+                    fillColor,
+                    fillColor.copy(alpha = 0.7f),
+                    fillColor.copy(alpha = 0.4f),
                 ),
             )
         } else {
@@ -80,6 +80,8 @@ fun BeamsyncCircularProgress(
         label = "circularProgress",
     )
 
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Box(
         modifier = Modifier.size(size),
         contentAlignment = Alignment.Center,
@@ -101,8 +103,8 @@ fun BeamsyncCircularProgress(
             )
 
             val sweepColor = lerp(
-                BeamsyncColors.accentGradientStart,
-                BeamsyncColors.accentGradientEnd,
+                primaryColor,
+                primaryColor.copy(alpha = 0.5f),
                 animatedProgress,
             )
             drawArc(
@@ -124,9 +126,4 @@ fun BeamsyncCircularProgress(
     }
 }
 
-private fun lerp(a: Color, b: Color, t: Float): Color = Color(
-    red   = a.red   + (b.red   - a.red)   * t,
-    green = a.green + (b.green - a.green) * t,
-    blue  = a.blue  + (b.blue  - a.blue)  * t,
-    alpha = a.alpha + (b.alpha - a.alpha) * t,
-)
+

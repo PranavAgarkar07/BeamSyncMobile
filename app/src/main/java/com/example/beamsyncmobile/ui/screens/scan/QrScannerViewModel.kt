@@ -20,9 +20,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.coroutines.withContext
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 sealed class ScannerState {
     data object Waiting : ScannerState()
@@ -47,6 +49,7 @@ class QrScannerViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val client = BeamSyncClient()
     private val prefs = application.getSharedPreferences("beamsync_prefs", Context.MODE_PRIVATE)
+    private val gson = Gson()
 
     private val _scannerState = MutableStateFlow<ScannerState>(ScannerState.Waiting)
     val scannerState: StateFlow<ScannerState> = _scannerState.asStateFlow()
@@ -68,8 +71,12 @@ class QrScannerViewModel(application: Application) : AndroidViewModel(applicatio
 
     private var isProcessing = false
 
+    private val scanner by lazy { BarcodeScanning.getClient() }
+
     init {
-        loadRecentConnections()
+        viewModelScope.launch {
+            loadRecentConnections()
+        }
     }
 
     fun toggleTorch() {
@@ -121,7 +128,6 @@ class QrScannerViewModel(application: Application) : AndroidViewModel(applicatio
         _scannerState.value = ScannerState.Scanning
 
         val inputImage = InputImage.fromBitmap(bitmap, 0)
-        val scanner = BarcodeScanning.getClient()
         scanner.process(inputImage)
             .addOnSuccessListener { barcodes ->
                 for (barcode in barcodes) {
@@ -155,15 +161,14 @@ class QrScannerViewModel(application: Application) : AndroidViewModel(applicatio
         }
 
         val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-        val scanner = BarcodeScanning.getClient()
 
         scanner.process(inputImage)
             .addOnSuccessListener { barcodes ->
                 for (barcode in barcodes) {
                     val rawValue = barcode.rawValue
                     if (rawValue != null) {
-                        Log.d("QrScanner", "QR scanned: $rawValue")
                         isProcessing = true
+                        Log.d("QrScanner", "QR scanned: $rawValue")
                         resolveUrl(rawValue)
                         break
                     }
@@ -171,6 +176,7 @@ class QrScannerViewModel(application: Application) : AndroidViewModel(applicatio
             }
             .addOnCompleteListener {
                 imageProxy.close()
+                isProcessing = false
             }
     }
 
@@ -220,36 +226,18 @@ class QrScannerViewModel(application: Application) : AndroidViewModel(applicatio
         val kept = updated.take(5)
         _recentConnections.value = kept
 
-        val json = JSONArray()
-        for (rc in kept) {
-            json.put(JSONObject().apply {
-                put("label", rc.label)
-                put("scheme", rc.scheme)
-                put("host", rc.host)
-                put("port", rc.port)
-                put("token", rc.token)
-            })
+        viewModelScope.launch(Dispatchers.IO) {
+            prefs.edit().putString("recent_connections", gson.toJson(kept)).apply()
         }
-        prefs.edit().putString("recent_connections", json.toString()).apply()
     }
 
-    private fun loadRecentConnections() {
-        val raw = prefs.getString("recent_connections", null) ?: return
+    private suspend fun loadRecentConnections() {
+        val raw = withContext(Dispatchers.IO) {
+            prefs.getString("recent_connections", null)
+        } ?: return
         try {
-            val json = JSONArray(raw)
-            val list = mutableListOf<RecentConnection>()
-            for (i in 0 until json.length()) {
-                val obj = json.getJSONObject(i)
-                list.add(
-                    RecentConnection(
-                        label = obj.getString("label"),
-                        scheme = obj.getString("scheme"),
-                        host = obj.getString("host"),
-                        port = obj.getInt("port"),
-                        token = obj.getString("token"),
-                    )
-                )
-            }
+            val type = object : TypeToken<List<RecentConnection>>() {}.type
+            val list: List<RecentConnection> = gson.fromJson(raw, type)
             _recentConnections.value = list
         } catch (_: Exception) { }
     }

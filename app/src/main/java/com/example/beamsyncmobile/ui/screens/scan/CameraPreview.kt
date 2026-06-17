@@ -31,14 +31,20 @@ fun CameraPreview(
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val cameraRef = remember { mutableStateOf<Camera?>(null) }
 
-    LaunchedEffect(torchEnabled) {
+    fun applyTorch() {
+        val camera = cameraRef.value ?: return
         try {
-            cameraRef.value?.cameraControl?.enableTorch(torchEnabled)
+            camera.cameraControl.enableTorch(torchEnabled)
         } catch (_: Exception) { }
+    }
+
+    LaunchedEffect(torchEnabled) {
+        applyTorch()
     }
 
     DisposableEffect(Unit) {
         onDispose {
+            cameraRef.value = null
             cameraExecutor.shutdown()
         }
     }
@@ -82,6 +88,7 @@ fun CameraPreview(
                         imageAnalysis,
                     )
                     cameraRef.value = camera
+                    applyTorch()
                 } catch (e: Exception) {
                     android.util.Log.e("CameraPreview", "Camera bind failed", e)
                 }

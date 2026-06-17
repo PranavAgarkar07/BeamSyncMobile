@@ -7,12 +7,7 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="windowSplashScreenBackground">@color/black</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_beamsync</item>
         <item name="postSplashScreenTheme">@style/Theme.BeamSyncMobile</item>
-    </style>
-
-    <style name="Theme.BeamSyncMobile" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/black</item>
     </style>
 
 </resources>

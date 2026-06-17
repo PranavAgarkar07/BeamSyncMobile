@@ -26,13 +26,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,12 +57,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.request.CachePolicy
 import coil.request.ImageRequest
 import com.example.beamsyncmobile.network.CurrentConnection
+import androidx.compose.foundation.BorderStroke
 import com.example.beamsyncmobile.ui.components.AnimatedSuccessContent
-import com.example.beamsyncmobile.ui.components.BeamsyncButton
-import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
-import com.example.beamsyncmobile.ui.components.BeamsyncButtonVariant
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import com.example.beamsyncmobile.ui.components.BeamsyncCircularProgress
 import com.example.beamsyncmobile.ui.components.BeamsyncProgressBar
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
@@ -83,6 +91,14 @@ fun UploadsScreen(
         }
     }
 
+    val galleryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
+            viewModel.addFiles(uris)
+        }
+    }
+
     val openFile: (SelectedFile) -> Unit = remember {
         { file ->
             val mime = resolveMimeType(file.name, file.mimeType)
@@ -98,16 +114,19 @@ fun UploadsScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    DisposableEffect(Unit) {
         if (CurrentConnection.connection != null) {
             viewModel.startHeartbeat()
         }
+        onDispose { viewModel.stopHeartbeat() }
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(MaterialTheme.colorScheme.background)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
     ) {
         ConnectionBar(status = connectionStatus)
 
@@ -115,23 +134,32 @@ fun UploadsScreen(
             targetState = uploadState::class.qualifiedName,
             transitionSpec = { fadeIn(tween(200)).togetherWith(fadeOut(tween(200))) },
             label = "upload-state",
+            modifier = Modifier.weight(1f),
         ) { _ ->
             when (val state = uploadState) {
-                is UploadState.Idle -> IdleContent(onPickFiles = { filePicker.launch(MIME_TYPES) })
+                is UploadState.Idle -> IdleContent(                    onPickFiles = { filePicker.launch(MIME_TYPES) },
+                    onPickGallery = { galleryPicker.launch("image/*") })
                 is UploadState.Ready -> FileSelectionContent(
                     files = files,
                     onPickFiles = { filePicker.launch(MIME_TYPES) },
                     onRemoveFile = { viewModel.removeFile(it) },
                     onUpload = { viewModel.startUpload() },
+                    onPickGallery = { galleryPicker.launch("image/*") },
                     onOpenFile = openFile,
+                    onTerminate = viewModel::terminate,
                 )
-                is UploadState.Uploading -> UploadingContent(state = state)
+                is UploadState.Uploading -> UploadingContent(
+                    state = state,
+                    onTerminate = viewModel::terminate,
+                )
                 is UploadState.Complete -> CompleteContent(
                     onSendMore = { viewModel.reset() },
+                    onTerminate = viewModel::terminate,
                 )
                 is UploadState.Error -> ErrorContent(
                     message = state.message,
                     onRetry = { viewModel.reset() },
+                    onTerminate = viewModel::terminate,
                 )
             }
         }
@@ -171,7 +199,10 @@ private fun ConnectionBar(status: String) {
 }
 
 @Composable
-private fun IdleContent(onPickFiles: () -> Unit) {
+private fun IdleContent(
+    onPickFiles: () -> Unit,
+    onPickGallery: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -193,13 +224,31 @@ private fun IdleContent(onPickFiles: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space8))
-        BeamsyncButton(
-            text = "SELECT FILES",
-            variant = BeamsyncButtonVariant.Primary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
+        Button(
             onClick = onPickFiles,
-        )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "SELECT FILES",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        Spacer(Modifier.height(BeamsyncSpacing.space3))
+        OutlinedButton(
+            onClick = onPickGallery,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "FROM GALLERY",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
     }
 }
 
@@ -209,7 +258,9 @@ private fun FileSelectionContent(
     onPickFiles: () -> Unit,
     onRemoveFile: (Int) -> Unit,
     onUpload: () -> Unit,
+    onPickGallery: () -> Unit,
     onOpenFile: (SelectedFile) -> Unit,
+    onTerminate: () -> Unit,
 ) {
     val totalSize = files.sumOf { it.size }
     val sizeText = formatBytes(totalSize)
@@ -238,12 +289,20 @@ private fun FileSelectionContent(
                     fontFamily = FontFamily.Monospace,
                 )
             }
-            BeamsyncButton(
-                text = "+ ADD",
-                variant = BeamsyncButtonVariant.Ghost,
-                size = BeamsyncButtonSize.Small,
-                onClick = onPickFiles,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2)) {
+                TextButton(onClick = onPickGallery) {
+                    Text(
+                        text = "GALLERY",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+                TextButton(onClick = onPickFiles) {
+                    Text(
+                        text = "ADD",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(BeamsyncSpacing.space6))
@@ -256,7 +315,7 @@ private fun FileSelectionContent(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
             ) {
-                itemsIndexed(files, key = { index, _ -> index }) { index, file ->
+                itemsIndexed(files, key = { _, file -> file.uri.toString() }) { index, file ->
                     FileRow(
                         file = file,
                         onRemove = { onRemoveFile(index) },
@@ -268,13 +327,42 @@ private fun FileSelectionContent(
 
         Spacer(Modifier.height(BeamsyncSpacing.space4))
 
-        BeamsyncButton(
-            text = "UPLOAD ${files.size} FILE${if (files.size != 1) "S" else ""}",
-            variant = BeamsyncButtonVariant.Primary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
+        Button(
             onClick = onUpload,
-        )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "UPLOAD ${files.size} FILE${if (files.size != 1) "S" else ""}",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+
+        Spacer(Modifier.height(BeamsyncSpacing.space2))
+
+        OutlinedButton(
+            onClick = onTerminate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(BeamsyncSpacing.space2))
+            Text(
+                text = "DISCONNECT",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
     }
 }
 
@@ -284,13 +372,39 @@ private fun FileRow(
     onRemove: () -> Unit,
     onOpenFile: () -> Unit,
 ) {
-    Box(
+    val context = LocalContext.current
+
+    val request = remember(key1 = file.uri) {
+        if (file.isImage) {
+            ImageRequest.Builder(context)
+                .data(file.uri)
+                .size(160)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .crossfade(false)
+                .build()
+        } else null
+    }
+
+    val openFile = onOpenFile
+
+    val isImage = file.isImage
+    val displayName = file.name
+    val displaySize = formatBytes(file.size)
+
+    val surface = MaterialTheme.colorScheme.surface
+    val surfaceContainerLow = MaterialTheme.colorScheme.surfaceContainerLow
+    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val shape = MaterialTheme.shapes.medium
+
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp)
-            .background(MaterialTheme.colorScheme.surface)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, MaterialTheme.shapes.medium)
-            .clickable(onClick = onOpenFile),
+            .clickable(onClick = openFile),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = surface),
+        border = BorderStroke(1.dp, outlineVariant),
     ) {
         Row(
             modifier = Modifier
@@ -298,24 +412,18 @@ private fun FileRow(
                 .padding(horizontal = BeamsyncSpacing.space4),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Thumbnail or placeholder
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow),
+                    .clip(shape)
+                    .background(surfaceContainerLow),
                 contentAlignment = Alignment.Center,
             ) {
-                if (file.isImage) {
+                if (isImage && request != null) {
                     AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(file.uri)
-                            .crossfade(true)
-                            .size(160)
-                            .build(),
-                        contentDescription = file.name,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(MaterialTheme.shapes.small),
+                        model = request,
+                        contentDescription = displayName,
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop,
                     )
                 } else {
@@ -333,14 +441,14 @@ private fun FileRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = file.name,
+                    text = displayName,
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = formatBytes(file.size),
+                    text = displaySize,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelSmall,
                     fontFamily = FontFamily.Monospace,
@@ -363,117 +471,150 @@ private fun FileRow(
 }
 
 @Composable
-private fun UploadingContent(state: UploadState.Uploading) {
-    Column(
+private fun UploadingContent(
+    state: UploadState.Uploading,
+    onTerminate: () -> Unit,
+) {
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = BeamsyncSpacing.space8),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        BeamsyncCircularProgress(
-            progress = state.overallProgress,
-            size = 160.dp,
-            strokeWidth = 8.dp,
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = "${(state.overallProgress * 100).toInt()}%",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.displaySmall,
-                    fontFamily = FontFamily.Monospace,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = formatBytes(state.transferredBytes) + " / " + formatBytes(state.totalBytes),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(BeamsyncSpacing.space4))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (state.speedBytesPerSec > 0) {
-                Text(
-                    text = formatSpeed(state.speedBytesPerSec),
-                    color = MaterialTheme.colorScheme.secondary,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "\u00B7",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-            }
-            if (state.etaSeconds > 0) {
-                Text(
-                    text = "ETA ${formatEta(state.etaSeconds)}",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                )
-            }
-        }
-
-        Spacer(Modifier.height(BeamsyncSpacing.space8))
-
-        if (state.currentFile.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium)
-                    .padding(BeamsyncSpacing.space4),
+            BeamsyncCircularProgress(
+                progress = state.overallProgress,
+                size = 160.dp,
+                strokeWidth = 8.dp,
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = state.currentFile,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Spacer(Modifier.width(BeamsyncSpacing.space3))
-                        Text(
-                            text = "${(state.fileProgress * 100).toInt()}%",
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                    }
-                    Spacer(Modifier.height(BeamsyncSpacing.space2))
-                    BeamsyncProgressBar(progress = state.fileProgress)
-                    Spacer(Modifier.height(BeamsyncSpacing.space2))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "${state.filesCompleted} / ${state.totalFiles} files transferred",
+                        text = "${(state.overallProgress * 100).toInt()}%",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = formatBytes(state.transferredBytes) + " / " + formatBytes(state.totalBytes),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.labelSmall,
                         fontFamily = FontFamily.Monospace,
                     )
                 }
             }
+
+            Spacer(Modifier.height(BeamsyncSpacing.space4))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (state.speedBytesPerSec > 0) {
+                    Text(
+                        text = formatSpeed(state.speedBytesPerSec),
+                        color = MaterialTheme.colorScheme.secondary,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = "\u00B7",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (state.etaSeconds > 0) {
+                    Text(
+                        text = "ETA ${formatEta(state.etaSeconds)}",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(BeamsyncSpacing.space6))
+
+            if (state.currentFile.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.medium)
+                        .padding(BeamsyncSpacing.space4),
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = state.currentFile,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(BeamsyncSpacing.space3))
+                            Text(
+                                text = "${(state.fileProgress * 100).toInt()}%",
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                            )
+                        }
+                        Spacer(Modifier.height(BeamsyncSpacing.space2))
+                        BeamsyncProgressBar(progress = state.fileProgress)
+                        Spacer(Modifier.height(BeamsyncSpacing.space2))
+                        Text(
+                            text = "${state.filesCompleted} / ${state.totalFiles} files transferred",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                }
+            }
+        }
+
+        OutlinedButton(
+            onClick = onTerminate,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(BeamsyncSpacing.space2))
+            Text(
+                text = "TERMINATE",
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
     }
 }
 
 @Composable
-private fun CompleteContent(onSendMore: () -> Unit) {
+private fun CompleteContent(
+    onSendMore: () -> Unit,
+    onTerminate: () -> Unit,
+) {
     var showButton by remember { mutableStateOf(false) }
     Box(modifier = Modifier.fillMaxSize()) {
         AnimatedSuccessContent(
@@ -490,15 +631,44 @@ private fun CompleteContent(onSendMore: () -> Unit) {
                 )),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(BeamsyncSpacing.space8),
+                .padding(horizontal = BeamsyncSpacing.space8),
         ) {
-            BeamsyncButton(
-                text = "SEND MORE FILES",
-                variant = BeamsyncButtonVariant.Primary,
-                size = BeamsyncButtonSize.Large,
-                fullWidth = true,
-                onClick = onSendMore,
-            )
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = onSendMore,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(BeamsyncSpacing.space12),
+                    shape = MaterialTheme.shapes.medium,
+                ) {
+                    Text(
+                        text = "SEND MORE FILES",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+                Spacer(Modifier.height(BeamsyncSpacing.space2))
+                OutlinedButton(
+                    onClick = onTerminate,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(BeamsyncSpacing.space12),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Spacer(Modifier.width(BeamsyncSpacing.space2))
+                    Text(
+                        text = "DISCONNECT",
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
         }
     }
 }
@@ -507,6 +677,7 @@ private fun CompleteContent(onSendMore: () -> Unit) {
 private fun ErrorContent(
     message: String,
     onRetry: () -> Unit,
+    onTerminate: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -529,13 +700,40 @@ private fun ErrorContent(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(BeamsyncSpacing.space8))
-        BeamsyncButton(
-            text = "TRY AGAIN",
-            variant = BeamsyncButtonVariant.Primary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
+        Button(
             onClick = onRetry,
-        )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "TRY AGAIN",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
+        Spacer(Modifier.height(BeamsyncSpacing.space2))
+        OutlinedButton(
+            onClick = onTerminate,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error,
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(BeamsyncSpacing.space2))
+            Text(
+                text = "DISCONNECT",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
     }
 }
 

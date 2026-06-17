@@ -1,0 +1,90 @@
+<!--
+  ic_beamsync_animated.xml
+  ════════════════════════════════════════════════════════════════
+  AnimatedVectorDrawable — wires the static VD to the glow pulse
+  objectAnimator.
+
+  Target → Animator mapping:
+  ─────────────────────────────────────────────────────────────────
+  border_glow_outer  →  anim_beamsync_glow_pulse
+      The outermost bloom ring around the square frame.
+
+  border_glow_inner  →  anim_beamsync_glow_pulse
+      The tighter halo just inside the outer bloom.
+      Both border glow targets share the same animator instance
+      reference (Android will create independent Animator objects
+      for each target, so they pulse in sync — intentional).
+
+  bolt_glow          →  anim_beamsync_glow_pulse
+      The soft bloom fill layered behind the crisp bolt polygon.
+
+  The crisp foreground layers (border_crisp, bolt_crisp) are
+  intentionally NOT animated — they stay at alpha 1.0 at all
+  times. Only the diffuse glow layers breathe. This produces the
+  "neon tube" effect: the sharp core is stable while the halo
+  pulses, matching real-world neon tube physics.
+
+  Usage in Compose:
+  ─────────────────────────────────────────────────────────────────
+      val avd = AnimatedVectorDrawableCompat.create(
+          context, R.drawable.ic_beamsync_animated
+      )!!
+      avd.start()
+
+      // or with painterResource / rememberAnimatedVectorPainter:
+      val painter = rememberAnimatedVectorPainter(
+          animatedImageVector = AnimatedImageVector.animatedVectorResource(
+              R.drawable.ic_beamsync_animated
+          ),
+          atEnd = false
+      )
+      Image(painter = painter, contentDescription = "BeamSync")
+
+  Usage in XML layout:
+  ─────────────────────────────────────────────────────────────────
+      <ImageView
+          android:src="@drawable/ic_beamsync_animated"
+          app:animatedImage="true"
+          ... />
+
+      // start in code:
+      (imageView.drawable as AnimatedVectorDrawable).start()
+  ════════════════════════════════════════════════════════════════
+-->
+<animated-vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/ic_beamsync">
+
+    <!--
+        Outer glow ring — widest bloom around the square border.
+        Pulsing this separate from the inner ring is key: if both
+        had identical timing they'd read as one flat layer rather
+        than volumetric depth. They share the animator ref but
+        each <target> spawns an independent Animator — they are
+        automatically in sync, which is exactly what we want here.
+    -->
+    <target
+        android:name="border_glow_outer"
+        android:animation="@animator/anim_beamsync_glow_pulse"/>
+
+    <!--
+        Inner glow ring — tighter halo, slightly different starting
+        alpha from the static VD (0.45 vs 0.28 outer) so the two
+        rings produce a layered depth sensation even when both pulse
+        to the same valueTo ceiling.
+    -->
+    <target
+        android:name="border_glow_inner"
+        android:animation="@animator/anim_beamsync_glow_pulse"/>
+
+    <!--
+        Bolt bloom fill — soft neon spread behind the crisp bolt.
+        Pulsing this in sync with the border glow creates a unified
+        "whole screen breathes" feel consistent with the reference
+        image's neon tube aesthetic.
+    -->
+    <target
+        android:name="bolt_glow"
+        android:animation="@animator/anim_beamsync_glow_pulse"/>
+
+</animated-vector>

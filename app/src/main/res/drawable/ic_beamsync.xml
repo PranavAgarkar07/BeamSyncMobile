@@ -1,0 +1,259 @@
+<!--
+  BeamSync — Neon Pixel-Art Lightning Bolt VectorDrawable  v3
+  ════════════════════════════════════════════════════════════════
+  Viewport   : 100 × 100
+  Intrinsic  : 48dp × 48dp  (scaleable — set layout size freely)
+  Palette    : #020502 (near-OLED black) · #39FF14 (neon green)
+
+  ── GEOMETRY DERIVATION  v3 ─────────────────────────────────────
+  Root problem with v2: arm shift rate was 2 units LEFT per 4 DOWN
+  (= ~14° from vertical). Reference bolt shifts 1 unit LEFT per 5
+  DOWN (= ~11°), creating the elegant, nearly-vertical appearance.
+
+  New parameters
+  ─────────────
+  Arm width     : 5 viewport-units throughout (was 7)
+  Shift rate    : 1 LEFT per 5 DOWN (was 1/4)
+  Step interval : 5 viewport-units per V-step (= one staircase tooth)
+
+  Derived key coordinates (verified cross-sections):
+    y= 12  right=60  left=55  width= 5  (top cap)
+    y= 32  right=56  left=51  width= 5  (upper arm mid)
+    y= 47  right=53  left=48  width= 5  (upper arm bottom / wing top)
+    y= 47–53   wing zone: right sweeps 53→68, left in notch at x=40
+    y= 53  right=55  left=50  width= 5  (lower arm top / wing bottom)
+    y= 68  right=52  left=47  width= 5  (lower arm mid)
+    y= 88  right=48  left=43  width= 5  (lower arm bottom)
+
+  Staircase rule (strictly H and V only):
+    Going DOWN: each "tooth" = (V +5, H −1)   → drifts left
+    Going UP:   each "tooth" = (V −5, H +1)   → drifts right
+  7 teeth × 1-unit shift × 5-unit height = 7 left per 35 down = 1/5 ✓
+
+  Polygon traversal (clockwise from top-left):
+    ① M 55 12 → H 60           top cap (width = 5)
+    ② V17…V47 with H shifts     upper arm RIGHT edge ↘ to (53,47)
+    ③ H 68 V 53 H 55            wing jut → drop → return
+    ④ V58…V88 with H shifts     lower arm RIGHT edge ↘ to (48,88)
+    ⑤ H 43                      bottom flat (width = 5)
+    ⑥ V83…V53 with H shifts     lower arm LEFT edge ↗ to (50,53)
+    ⑦ H 40 V 47 H 48            inner Z-notch (10u wide × 6u tall)
+    ⑧ V42…V12 with H shifts     upper arm LEFT edge ↗ to (55,12)
+    ⑨ Z                         close path
+
+  ── GLOW SIMULATION ─────────────────────────────────────────────
+  Same path, drawn below crisp fill, with:
+    fillAlpha=0.06  → very dim interior bloom
+    strokeWidth=6   → 3-unit neon bleed on every edge
+    strokeAlpha=0.22
+  AVD objectAnimator pulses fillAlpha + strokeAlpha together
+  (alpha multiplied on top of the static values).
+
+  ── SCANLINE / CRT EFFECT ───────────────────────────────────────
+  The reference shows grid lines PASSING THROUGH the bolt, creating
+  the retro CRT scanline look. We achieve this by rendering the grid
+  in TWO passes: one below (visible on dark bg) and one ABOVE the
+  bolt crisp layer (dark hairlines cutting through neon fill).
+  ════════════════════════════════════════════════════════════════
+-->
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- ① Background -->
+    <path
+        android:name="background"
+        android:fillColor="#020502"
+        android:pathData="M0,0 H100 V100 H0 Z"/>
+
+    <!-- ② Grid layer — BELOW bolt  (green tint, very faint) -->
+    <path
+        android:name="grid_background"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#39FF14"
+        android:strokeWidth="0.25"
+        android:strokeAlpha="0.12"
+        android:pathData="
+            M8,0 V100  M16,0 V100  M24,0 V100  M32,0 V100
+            M40,0 V100  M48,0 V100  M56,0 V100  M64,0 V100
+            M72,0 V100  M80,0 V100  M88,0 V100
+            M0,8 H100  M0,16 H100  M0,24 H100  M0,32 H100
+            M0,40 H100  M0,48 H100  M0,56 H100  M0,64 H100
+            M0,72 H100  M0,80 H100  M0,88 H100"/>
+
+    <!-- ③ Border — outer bloom  (AVD pulse target) -->
+    <path
+        android:name="border_glow_outer"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#39FF14"
+        android:strokeWidth="7"
+        android:strokeAlpha="0.22"
+        android:pathData="M12,12 H88 V88 H12 Z"/>
+
+    <!-- ④ Border — inner glow  (AVD pulse target) -->
+    <path
+        android:name="border_glow_inner"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#39FF14"
+        android:strokeWidth="3.0"
+        android:strokeAlpha="0.52"
+        android:pathData="M12,12 H88 V88 H12 Z"/>
+
+    <!--
+      ⑤ BOLT — GLOW LAYER  (AVD pulse target: "bolt_glow")
+      ──────────────────────────────────────────────────────
+      Identical path to bolt_crisp, rendered below it.
+      strokeWidth=6 bleeds 3 units outside every edge → bloom halo.
+      fillAlpha=0.06 gives a very dim interior light, not a blob.
+    -->
+    <path
+        android:name="bolt_glow"
+        android:fillColor="#39FF14"
+        android:fillAlpha="0.06"
+        android:strokeColor="#39FF14"
+        android:strokeWidth="6"
+        android:strokeAlpha="0.22"
+        android:strokeLineCap="butt"
+        android:strokeLineJoin="miter"
+        android:pathData="
+            M 55 12
+            H 60
+            V 17 H 59
+            V 22 H 58
+            V 27 H 57
+            V 32 H 56
+            V 37 H 55
+            V 42 H 54
+            V 47 H 53
+            H 68
+            V 53
+            H 55
+            V 58 H 54
+            V 63 H 53
+            V 68 H 52
+            V 73 H 51
+            V 78 H 50
+            V 83 H 49
+            V 88 H 48
+            H 43
+            V 83 H 44
+            V 78 H 45
+            V 73 H 46
+            V 68 H 47
+            V 63 H 48
+            V 58 H 49
+            V 53 H 50
+            H 40
+            V 47
+            H 48
+            V 42 H 49
+            V 37 H 50
+            V 32 H 51
+            V 27 H 52
+            V 22 H 53
+            V 17 H 54
+            V 12 H 55
+            Z"/>
+
+    <!--
+      ⑥ BOLT — CRISP FOREGROUND  (never animated, always α=1)
+      ──────────────────────────────────────────────────────────
+      Pure pixel-art staircase lightning bolt polygon.
+
+      Arm width = 5 units throughout.
+      Diagonal rate = 1 unit LEFT per 5 units DOWN (≈11° from vert).
+      Step interval = 5 units per V command → one visible staircase tooth.
+
+      Tracing path (verified):
+        Top cap:          M 55 12 → H 60
+        Right arm ↘:      V17H59 → V22H58 → V27H57 → V32H56 → V37H55
+                          → V42H54 → V47H53   (7 teeth, end=(53,47))
+        Wing jut →:       H 68
+        Wing drop ↓:      V 53
+        Wing return ←:    H 55   (lower arm right starts at (55,53))
+        Right arm ↘:      V58H54 → V63H53 → V68H52 → V73H51 → V78H50
+                          → V83H49 → V88H48   (7 teeth, end=(48,88))
+        Bottom flat ←:    H 43   (width=5, lower arm left bottom=(43,88))
+        Left arm ↗:       V83H44 → V78H45 → V73H46 → V68H47 → V63H48
+                          → V58H49 → V53H50   (7 teeth, end=(50,53))
+        Z-notch ← ↑ →:   H40 · V47 · H48   (10u wide × 6u tall concave)
+        Left arm ↗:       V42H49 → V37H50 → V32H51 → V27H52 → V22H53
+                          → V17H54 → V12H55   (7 teeth, end=(55,12))
+        Close:            Z   →  M(55,12)  zero-length segment ✓
+    -->
+    <path
+        android:name="bolt_crisp"
+        android:fillColor="#39FF14"
+        android:pathData="
+            M 55 12
+            H 60
+            V 17 H 59
+            V 22 H 58
+            V 27 H 57
+            V 32 H 56
+            V 37 H 55
+            V 42 H 54
+            V 47 H 53
+            H 68
+            V 53
+            H 55
+            V 58 H 54
+            V 63 H 53
+            V 68 H 52
+            V 73 H 51
+            V 78 H 50
+            V 83 H 49
+            V 88 H 48
+            H 43
+            V 83 H 44
+            V 78 H 45
+            V 73 H 46
+            V 68 H 47
+            V 63 H 48
+            V 58 H 49
+            V 53 H 50
+            H 40
+            V 47
+            H 48
+            V 42 H 49
+            V 37 H 50
+            V 32 H 51
+            V 27 H 52
+            V 22 H 53
+            V 17 H 54
+            V 12 H 55
+            Z"/>
+
+    <!-- ⑦ Border — crisp foreground (always solid, never animated) -->
+    <path
+        android:name="border_crisp"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#39FF14"
+        android:strokeWidth="1.5"
+        android:pathData="M12,12 H88 V88 H12 Z"/>
+
+    <!--
+      ⑧ Grid overlay — ABOVE bolt  (CRT scanline effect)
+      ──────────────────────────────────────────────────────
+      Near-black hairlines drawn on top of the bolt fill.
+      This simulates the CRT grid "cutting through" the neon glow,
+      exactly as visible in the reference image. Very low alpha so
+      the effect is subtle — the grid dims the bolt slightly at each
+      line rather than obscuring it.
+      Only horizontal lines are used here (the "scanline" dimension).
+    -->
+    <path
+        android:name="grid_scanlines"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#020502"
+        android:strokeWidth="0.5"
+        android:strokeAlpha="0.18"
+        android:pathData="
+            M0,8 H100  M0,16 H100  M0,24 H100  M0,32 H100
+            M0,40 H100  M0,48 H100  M0,56 H100  M0,64 H100
+            M0,72 H100  M0,80 H100  M0,88 H100"/>
+
+</vector>

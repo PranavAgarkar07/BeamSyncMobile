@@ -5,6 +5,9 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.beamsyncmobile.data.history.HistoryRepository
+import com.example.beamsyncmobile.data.history.TransferDirection
+import com.example.beamsyncmobile.data.history.TransferStatus
 import com.example.beamsyncmobile.network.BeamSyncClient
 import com.example.beamsyncmobile.network.CurrentConnection
 import com.example.beamsyncmobile.network.UploadFileSpec
@@ -158,6 +161,7 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
             totalFiles = files.size,
         )
 
+        val app = getApplication<android.app.Application>()
         uploadJob = viewModelScope.launch {
             val result = client.upload(
                 conn = conn,
@@ -172,6 +176,10 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                     val idx = specs.indexOfFirst { it.name == fileName }
                     if (idx >= 0) {
                         transferredBeforeCurrent += fileSizes[idx]
+                        HistoryRepository.addRecord(
+                            app, fileName, fileSizes[idx],
+                            TransferDirection.SEND, TransferStatus.SUCCESS,
+                        )
                     }
                     filesCompleted++
                 },
@@ -188,6 +196,29 @@ class UploadViewModel(application: Application) : AndroidViewModel(application) 
                 },
             )
         }
+    }
+
+    fun terminate() {
+        uploadJob?.cancel()
+        uploadJob = null
+        client.currentCall?.cancel()
+        client.currentCall = null
+        stopHeartbeat()
+        CurrentConnection.connection?.let { conn ->
+            client.disconnect(conn)
+        }
+        _files.value = emptyList()
+        _uploadState.value = UploadState.Idle
+        CurrentConnection.clear()
+    }
+
+    fun cancelUpload() {
+        client.currentCall?.cancel()
+        client.currentCall = null
+        uploadJob?.cancel()
+        uploadJob = null
+        _files.value = emptyList()
+        _uploadState.value = UploadState.Idle
     }
 
     fun reset() {

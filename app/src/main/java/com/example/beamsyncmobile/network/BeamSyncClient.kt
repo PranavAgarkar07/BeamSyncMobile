@@ -7,6 +7,7 @@ import java.io.InputStream
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.ConnectionPool
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -32,13 +33,28 @@ data class UploadFileSpec(
     val size: Long,
 )
 
+data class SenderFileInfo(
+    val name: String,
+    val sizeText: String,
+    val downloadUrl: String,
+)
+
+object NetworkClient {
+    val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectionPool(ConnectionPool(5, 30, TimeUnit.SECONDS))
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(120, TimeUnit.SECONDS)
+            .build()
+    }
+}
+
 class BeamSyncClient {
 
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(120, TimeUnit.SECONDS)
-        .build()
+    private val client get() = NetworkClient.client
+    @Volatile
+    var currentCall: okhttp3.Call? = null
 
     suspend fun connect(url: String): Result<ServerConnection> = withContext(Dispatchers.IO) {
         try {
@@ -131,7 +147,9 @@ class BeamSyncClient {
                 .post(requestBody)
                 .build()
 
-            val response = client.newCall(request).execute()
+            currentCall = client.newCall(request)
+            val response = currentCall!!.execute()
+            currentCall = null
             if (response.isSuccessful) {
                 Result.success(Unit)
             } else {
@@ -187,8 +205,118 @@ class BeamSyncClient {
         if (!response.isSuccessful) return null
 
         val body = response.body?.string() ?: return null
-        val tokenRegex = Regex("""token["'\s]*[:=]["'\s]*["']?([0-9a-fA-F]{32})["']?""")
+        val tokenRegex = Regex("""token["'\s]*[:=]["'\s]*["']?([0-9a-fA-F]{32})["']?""", RegexOption.IGNORE_CASE)
         val match = tokenRegex.find(body)
         return match?.groupValues?.get(1)
+    }
+
+    suspend fun connectToSender(url: String): Result<ServerConnection> = withContext(Dispatchers.IO) {
+        try {
+            val cleanUrl = url.trim()
+            val withoutScheme = cleanUrl.substringAfter("://")
+            val hostPort = withoutScheme.substringBefore("/")
+            val host = hostPort.substringBefore(":")
+            val port = hostPort.substringAfter(":", "80")
+                .substringBefore("?")
+                .toIntOrNull() ?: 80
+            val scheme = if (cleanUrl.startsWith("https://")) "https" else "http"
+            val baseUrl = "$scheme://$host:$port"
+            val token = fetchToken(baseUrl) ?: ""
+            Result.success(ServerConnection(scheme, host, port, token))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    fun disconnect(conn: ServerConnection) {
+        try {
+            val request = Request.Builder()
+                .url("${conn.scheme}://${conn.host}:${conn.port}/cancel?token=${conn.token}")
+                .get()
+                .build()
+            client.newCall(request).enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { }
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                    response.close()
+                }
+            })
+        } catch (_: Exception) { }
+    }
+
+    suspend fun fetchSenderFileList(conn: ServerConnection): Result<List<SenderFileInfo>> = withContext(Dispatchers.IO) {
+        try {
+            val baseUrl = "${conn.scheme}://${conn.host}:${conn.port}"
+            val request = Request.Builder().url(baseUrl).get().build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("HTTP ${response.code}"))
+            }
+            val html = response.body?.string() ?: return@withContext Result.failure(Exception("Empty response"))
+
+            val token = conn.token.ifEmpty {
+                val tokenRegex = Regex("""TOKEN\s*=\s*"([^"]+)"""")
+                tokenRegex.find(html)?.groupValues?.get(1) ?: ""
+            }
+
+            val files = mutableListOf<SenderFileInfo>()
+            val cardRegex = Regex(
+                """<div class="file-card"[^>]*id="card-([^"]+)"[^>]*>.*?id="name-\1"[^>]*>([^<]+)</div>.*?<div class="file-card__size">([^<]+)</div>""",
+                setOf(RegexOption.DOT_MATCHES_ALL)
+            )
+            for (match in cardRegex.findAll(html)) {
+                val cardId = match.groupValues[1]
+                val name = match.groupValues[2].trim()
+                val sizeText = match.groupValues[3].trim()
+                val downloadUrl = if (cardId.startsWith("multi-")) {
+                    val idx = cardId.removePrefix("multi-")
+                    "$baseUrl/download/$idx?token=$token"
+                } else {
+                    "$baseUrl/download?token=$token"
+                }
+                files.add(SenderFileInfo(name, sizeText, downloadUrl))
+            }
+
+            Result.success(files)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun downloadFile(
+        url: String,
+        outputStream: java.io.OutputStream,
+        onProgress: (Long, Long) -> Boolean,
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder().url(url).get().build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("HTTP ${response.code}"))
+            }
+
+            val body = response.body ?: return@withContext Result.failure(Exception("Empty response"))
+            val totalBytes = body.contentLength()
+            val inputStream = body.byteStream()
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+            var totalRead = 0L
+
+            outputStream.use { output ->
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    output.write(buffer, 0, bytesRead)
+                    totalRead += bytesRead
+                    if (totalBytes > 0) {
+                        if (!onProgress(totalRead, totalBytes)) {
+                            inputStream.close()
+                            return@withContext Result.failure(Exception("Cancelled"))
+                        }
+                    }
+                }
+            }
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

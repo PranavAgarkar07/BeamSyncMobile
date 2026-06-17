@@ -1,156 +1,202 @@
 package com.example.beamsyncmobile.ui.navigation
 
-import android.content.Context
+import android.app.Activity
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.beamsyncmobile.network.BeamSyncClient
 import com.example.beamsyncmobile.network.CurrentConnection
-import com.example.beamsyncmobile.network.ServerConnection
-import com.example.beamsyncmobile.ui.screens.connection.ConnectionScreen
 import com.example.beamsyncmobile.ui.screens.downloads.DownloadsScreen
-import com.example.beamsyncmobile.ui.screens.home.HomeScreen
-import com.example.beamsyncmobile.ui.screens.onboarding.OnboardingScreen
+import com.example.beamsyncmobile.ui.screens.downloads.ReceiveViewModel
+import com.example.beamsyncmobile.ui.screens.history.HistoryScreen
+import com.example.beamsyncmobile.ui.screens.home.NewHomeScreen
+import com.example.beamsyncmobile.ui.screens.scan.QrScannerScreen
+import com.example.beamsyncmobile.ui.screens.scan.QrScannerViewModel
+import com.example.beamsyncmobile.ui.screens.settings.AboutScreen
 import com.example.beamsyncmobile.ui.screens.settings.SettingsScreen
+import com.example.beamsyncmobile.ui.screens.startup.PermissionsScreen
 import com.example.beamsyncmobile.ui.screens.uploads.UploadsScreen
-
-private const val PREFS_NAME = "beamsync_prefs"
-private const val KEY_ONBOARDING_DONE = "onboarding_complete"
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun BeamsyncNavGraph() {
-    val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    var onboardingDone by remember { mutableStateOf(prefs.getBoolean(KEY_ONBOARDING_DONE, false)) }
+    val view = LocalView.current
+    val bgArgb = MaterialTheme.colorScheme.background.toArgb()
+    SideEffect {
+        val window = (view.context as? Activity)?.window ?: return@SideEffect
+        window.statusBarColor = bgArgb
+        val r = (bgArgb shr 16) and 0xFF
+        val g = (bgArgb shr 8) and 0xFF
+        val b = bgArgb and 0xFF
+        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
+            (0.299 * r + 0.587 * g + 0.114 * b) > 128
+    }
 
-    if (!onboardingDone) {
-        OnboardingScreen(
+    val context = LocalContext.current
+    var permissionsDone by remember { mutableStateOf(context.getSharedPreferences("beamsync_prefs", 0).getBoolean("permissions_done", false)) }
+
+    if (!permissionsDone) {
+        PermissionsScreen(
             onComplete = {
-                prefs.edit().putBoolean(KEY_ONBOARDING_DONE, true).apply()
-                onboardingDone = true
+                context.getSharedPreferences("beamsync_prefs", 0).edit().putBoolean("permissions_done", true).apply()
+                permissionsDone = true
             },
         )
         return
     }
 
     val navController = rememberNavController()
-    var selectedScreen by remember { mutableStateOf<Screen>(Screen.Scan) }
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            ) {
-                Screens.items.forEach { item ->
-                    val isSelected = item.screen == selectedScreen
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = {
-                            selectedScreen = item.screen
-                            navController.navigate(item.screen.route) {
-                                popUpTo(Screen.Scan.route) { inclusive = true }
-                                launchSingleTop = true
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Home.route,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        composable(
+            Screen.Home.route,
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) {
+            NewHomeScreen(
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToHistory = { navController.navigate(Screen.History.route) },
+                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                onReceiveScanQr = {
+                    navController.navigate(Screen.QrScanner.createRoute("receive"))
+                },
+                onReceiveManualUrl = {
+                    navController.navigate(Screen.QrScanner.createRoute("receive"))
+                },
+                onSendScanQr = {
+                    navController.navigate(Screen.QrScanner.createRoute("send"))
+                },
+                onSendManualUrl = {
+                    navController.navigate(Screen.QrScanner.createRoute("send"))
+                },
+                onConnectFromUrl = { url, mode ->
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            BeamSyncClient().connectToSender(url)
+                        }
+                        result.onSuccess { connection ->
+                            CurrentConnection.set(connection)
+                            if (mode == "receive") {
+                                navController.navigate(Screen.Downloads.route) {
+                                    popUpTo(Screen.Home.route)
+                                }
+                            } else {
+                                navController.navigate(Screen.Uploads.route) {
+                                    popUpTo(Screen.Home.route)
+                                }
                             }
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = item.screen.icon,
-                                contentDescription = item.label,
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = item.label,
-                                style = MaterialTheme.typography.labelSmall,
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        ),
-                    )
+                        }
+                    }
+                },
+            )
+        }
+
+        composable(
+            Screen.QrScanner.route,
+            arguments = listOf(navArgument("mode") { type = NavType.StringType }),
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) { backStackEntry ->
+            val mode = backStackEntry.arguments?.getString("mode") ?: "receive"
+            val scannerViewModel: QrScannerViewModel = viewModel()
+
+            QrScannerScreen(
+                viewModel = scannerViewModel,
+                onConnected = { connection ->
+                    CurrentConnection.set(connection)
+                    if (mode == "receive") {
+                        navController.navigate(Screen.Downloads.route) {
+                            popUpTo(Screen.Home.route)
+                        }
+                    } else {
+                        navController.navigate(Screen.Uploads.route) {
+                            popUpTo(Screen.Home.route)
+                        }
+                    }
+                },
+            )
+        }
+
+        composable(
+            Screen.Downloads.route,
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) {
+            val viewModel: ReceiveViewModel = viewModel()
+            LaunchedEffect(Unit) {
+                val conn = CurrentConnection.connection
+                if (conn != null) {
+                    val url = "${conn.scheme}://${conn.host}:${conn.port}"
+                    viewModel.connectToUrl(url)
                 }
             }
-        },
-    ) { padding ->
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Scan.route,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            DownloadsScreen(viewModel = viewModel)
+        }
+
+        composable(
+            Screen.Uploads.route,
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
         ) {
-            composable(Screen.Scan.route) {
-                selectedScreen = Screen.Scan
-                HomeScreen(
-                    onConnected = { connection ->
-                        CurrentConnection.set(connection)
-                        navController.navigate(
-                            "connection/${connection.scheme}/${connection.host}/${connection.port}/${connection.token}"
-                        ) {
-                            popUpTo(Screen.Scan.route) { inclusive = false }
-                        }
-                    },
-                )
-            }
+            UploadsScreen()
+        }
 
-            composable(
-                route = Screen.Connection.route,
-                arguments = listOf(
-                    navArgument("scheme") { type = NavType.StringType },
-                    navArgument("host") { type = NavType.StringType },
-                    navArgument("port") { type = NavType.IntType },
-                    navArgument("token") { type = NavType.StringType },
-                ),
-            ) { backStackEntry ->
-                selectedScreen = Screen.Connection
-                val connection = ServerConnection(
-                    scheme = backStackEntry.arguments?.getString("scheme") ?: "http",
-                    host = backStackEntry.arguments?.getString("host") ?: "",
-                    port = backStackEntry.arguments?.getInt("port") ?: 3000,
-                    token = backStackEntry.arguments?.getString("token") ?: "",
-                )
-                ConnectionScreen(
-                    navController = navController,
-                    connection = connection,
-                )
-            }
+        composable(
+            Screen.Settings.route,
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) {
+            SettingsScreen(
+                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+            )
+        }
 
-            composable(Screen.Downloads.route) {
-                selectedScreen = Screen.Downloads
-                DownloadsScreen()
-            }
+        composable(
+            Screen.About.route,
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) {
+            AboutScreen(
+                onBack = { navController.popBackStack() },
+            )
+        }
 
-            composable(Screen.Uploads.route) {
-                selectedScreen = Screen.Uploads
-                UploadsScreen()
-            }
-
-            composable(Screen.Settings.route) {
-                selectedScreen = Screen.Settings
-                SettingsScreen()
-            }
+        composable(
+            Screen.History.route,
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) {
+            HistoryScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }

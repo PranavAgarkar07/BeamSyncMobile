@@ -19,12 +19,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -32,10 +34,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -49,7 +55,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -61,17 +66,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.beamsyncmobile.R
 import com.example.beamsyncmobile.network.ServerConnection
-import com.example.beamsyncmobile.ui.components.BeamsyncButton
-import com.example.beamsyncmobile.ui.components.BeamsyncButtonSize
-import com.example.beamsyncmobile.ui.components.BeamsyncButtonVariant
-import com.example.beamsyncmobile.ui.theme.BeamsyncColors
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
-
-private val ScreenBg = Color(0xFFFEF9F0)
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
@@ -102,7 +104,7 @@ fun QrScannerScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ScreenBg),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         when (contentState) {
             is ScannerState.Scanning -> {
@@ -185,13 +187,13 @@ private fun WaitingContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .verticalScroll(scrollState)
             .padding(BeamsyncSpacing.space8),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
     ) {
-        Spacer(Modifier.weight(1f))
-
         Icon(
             painter = painterResource(R.drawable.ic_onboarding_logo),
             contentDescription = "BeamSync",
@@ -204,25 +206,30 @@ private fun WaitingContent(
         Text(
             text = "BeamSync",
             style = MaterialTheme.typography.headlineMedium,
-            color = BeamsyncColors.textPrimary,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
         )
 
         Text(
             text = "Transfer files seamlessly",
             style = MaterialTheme.typography.bodyMedium,
-            color = BeamsyncColors.textSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
         Spacer(Modifier.height(BeamsyncSpacing.space8))
 
-        BeamsyncButton(
-            text = "START CAMERA",
-            variant = BeamsyncButtonVariant.Primary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
+        Button(
             onClick = onStartCamera,
-        )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "START CAMERA",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
 
         Spacer(Modifier.height(BeamsyncSpacing.space6))
 
@@ -234,20 +241,20 @@ private fun WaitingContent(
                 modifier = Modifier
                     .weight(1f)
                     .height(1.dp)
-                    .background(BeamsyncColors.strokeDefault),
+                    .background(MaterialTheme.colorScheme.outlineVariant),
             )
             Spacer(Modifier.width(BeamsyncSpacing.space3))
             Text(
                 text = "or enter URL manually",
-                color = BeamsyncColors.textSecondary,
-                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
             )
             Spacer(Modifier.width(BeamsyncSpacing.space3))
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .height(1.dp)
-                    .background(BeamsyncColors.strokeDefault),
+                    .background(MaterialTheme.colorScheme.outlineVariant),
             )
         }
 
@@ -260,28 +267,29 @@ private fun WaitingContent(
             placeholder = {
                 Text(
                     text = "http://192.168.1.100:3000/?token=...",
-                    color = BeamsyncColors.textDisabled,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                    ),
                 )
             },
             textStyle = MaterialTheme.typography.bodyMedium.copy(
                 fontFamily = FontFamily.Monospace,
-                color = BeamsyncColors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
             ),
             singleLine = true,
             isError = manualError != null,
             supportingText = if (manualError != null) {
-                { Text(text = manualError, color = BeamsyncColors.surfaceCritical) }
+                { Text(text = manualError, color = MaterialTheme.colorScheme.error) }
             } else null,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BeamsyncColors.strokeActive,
-                unfocusedBorderColor = BeamsyncColors.strokeDefault,
-                unfocusedContainerColor = BeamsyncColors.surfaceRaised,
-                errorBorderColor = BeamsyncColors.surfaceCritical,
-                cursorColor = BeamsyncColors.accentPrimary,
-                focusedTextColor = BeamsyncColors.textPrimary,
-                unfocusedTextColor = BeamsyncColors.textPrimary,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             ),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -293,22 +301,25 @@ private fun WaitingContent(
                     onManualSubmit()
                 },
             ),
-            shape = RoundedCornerShape(0.dp),
+            shape = MaterialTheme.shapes.medium,
         )
 
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 
-        BeamsyncButton(
-            text = "CONNECT",
-            variant = BeamsyncButtonVariant.DataAction,
-            size = BeamsyncButtonSize.Default,
-            fullWidth = true,
-            enabled = manualUrl.isNotBlank(),
+        OutlinedButton(
             onClick = {
                 focusManager.clearFocus()
                 onManualSubmit()
             },
-        )
+            modifier = Modifier.fillMaxWidth(),
+            enabled = manualUrl.isNotBlank(),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "CONNECT",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
 
         if (recentConnections.isNotEmpty()) {
             Spacer(Modifier.height(BeamsyncSpacing.space8))
@@ -316,7 +327,7 @@ private fun WaitingContent(
             Text(
                 text = "RECENT CONNECTIONS",
                 style = MaterialTheme.typography.labelSmall,
-                color = BeamsyncColors.textSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 1.sp,
             )
 
@@ -326,9 +337,9 @@ private fun WaitingContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(0.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .clickable { onConnectRecent(rc) }
-                        .background(BeamsyncColors.surfaceRaised)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space3),
                 ) {
                     Row(
@@ -340,19 +351,19 @@ private fun WaitingContent(
                             Text(
                                 text = rc.label,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = BeamsyncColors.textPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = FontFamily.Monospace,
                             )
                             Text(
                                 text = "Tap to reconnect",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = BeamsyncColors.textSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         Text(
                             text = "CONNECT",
                             style = MaterialTheme.typography.labelSmall,
-                            color = BeamsyncColors.accentPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                         )
@@ -362,7 +373,7 @@ private fun WaitingContent(
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(BeamsyncSpacing.space8))
     }
 }
 
@@ -373,50 +384,114 @@ private fun ScanningOverlay(
     onCancel: () -> Unit,
 ) {
     val infiniteTransition = rememberInfiniteTransition()
+
     val scanLineProgress by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
+            animation = tween(1800, easing = LinearEasing),
             repeatMode = RepeatMode.Restart,
         ),
     )
 
+    val bracketGlow by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
+
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
+
+    val primary = MaterialTheme.colorScheme.primary
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+            .background(Color.Black.copy(alpha = 0.55f)),
     ) {
         Box(
             modifier = Modifier
-                .size(260.dp)
+                .size(280.dp)
                 .align(Alignment.Center),
         ) {
-            // Transparent cutout area
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.01f)),
+                modifier = Modifier.fillMaxSize(),
             )
 
-            // Corner brackets
-            CornerBracket(Alignment.TopStart)
-            CornerBracket(Alignment.TopEnd)
-            CornerBracket(Alignment.BottomStart)
-            CornerBracket(Alignment.BottomEnd)
+            CornerBracket(
+                alignment = Alignment.TopStart,
+                length = 36.dp,
+                thickness = 3.dp,
+                color = primary,
+                glowAlpha = bracketGlow,
+            )
+            CornerBracket(
+                alignment = Alignment.TopEnd,
+                length = 36.dp,
+                thickness = 3.dp,
+                color = primary,
+                glowAlpha = bracketGlow,
+            )
+            CornerBracket(
+                alignment = Alignment.BottomStart,
+                length = 36.dp,
+                thickness = 3.dp,
+                color = primary,
+                glowAlpha = bracketGlow,
+            )
+            CornerBracket(
+                alignment = Alignment.BottomEnd,
+                length = 36.dp,
+                thickness = 3.dp,
+                color = primary,
+                glowAlpha = bracketGlow,
+            )
 
-            // Scan line
+            val scanOffset = (280.dp - 4.dp) * scanLineProgress
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
+                    .height(4.dp)
                     .align(Alignment.TopStart)
-                    .offset(y = 258.dp * scanLineProgress)
+                    .offset(y = scanOffset)
                     .background(
                         Brush.horizontalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                BeamsyncColors.accentPrimary,
+                                primary.copy(alpha = 0.2f),
+                                primary.copy(alpha = 0.6f),
+                                primary,
+                                primary.copy(alpha = 0.6f),
+                                primary.copy(alpha = 0.2f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .align(Alignment.TopStart)
+                    .offset(y = scanOffset + 4.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                primary.copy(alpha = 0.05f),
+                                primary.copy(alpha = 0.15f),
+                                primary.copy(alpha = 0.05f),
                                 Color.Transparent,
                             ),
                         ),
@@ -424,22 +499,20 @@ private fun ScanningOverlay(
             )
         }
 
-        // Guidance text below frame
         Text(
             text = "Align QR code within the frame",
-            color = Color.White.copy(alpha = 0.8f),
-            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.7f),
+            style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(top = 170.dp),
-            letterSpacing = 0.5.sp,
+                .padding(top = 180.dp),
+            textAlign = TextAlign.Center,
         )
 
-        // Scanning label
         Text(
             text = "SCANNING...",
-            color = BeamsyncColors.accentPrimary,
-            fontSize = 14.sp,
+            color = primary.copy(alpha = pulseAlpha),
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             letterSpacing = 3.sp,
             modifier = Modifier
@@ -449,7 +522,6 @@ private fun ScanningOverlay(
             textAlign = TextAlign.Center,
         )
 
-        // Cancel button - top left
         TextButton(
             onClick = onCancel,
             modifier = Modifier
@@ -466,11 +538,9 @@ private fun ScanningOverlay(
             Text(
                 text = "Cancel",
                 color = Color.White,
-                fontSize = 14.sp,
             )
         }
 
-        // Torch toggle - bottom right
         IconButton(
             onClick = onToggleTorch,
             modifier = Modifier
@@ -479,52 +549,70 @@ private fun ScanningOverlay(
                 .size(48.dp)
                 .background(
                     Color.White.copy(alpha = 0.2f),
-                    RoundedCornerShape(24.dp),
+                    MaterialTheme.shapes.extraLarge,
                 ),
+            colors = IconButtonDefaults.iconButtonColors(
+                contentColor = Color.White,
+            ),
         ) {
             Icon(
                 imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                 contentDescription = if (torchEnabled) "Disable flash" else "Enable flash",
-                tint = if (torchEnabled) BeamsyncColors.surfaceWarning else Color.White,
+                tint = if (torchEnabled) MaterialTheme.colorScheme.tertiary else Color.White,
             )
         }
     }
 }
 
 @Composable
-private fun BoxScope.CornerBracket(alignment: Alignment) {
+private fun BoxScope.CornerBracket(
+    alignment: Alignment,
+    length: Dp = 36.dp,
+    thickness: Dp = 3.dp,
+    color: Color,
+    glowAlpha: Float = 1f,
+) {
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(length + 2.dp)
             .align(alignment)
             .padding(
-                start = if (alignment == Alignment.TopStart || alignment == Alignment.BottomStart) 5.dp else 0.dp,
-                end = if (alignment == Alignment.TopEnd || alignment == Alignment.BottomEnd) 5.dp else 0.dp,
-                top = if (alignment == Alignment.TopStart || alignment == Alignment.TopEnd) 5.dp else 0.dp,
-                bottom = if (alignment == Alignment.BottomStart || alignment == Alignment.BottomEnd) 5.dp else 0.dp,
+                start = if (alignment == Alignment.TopStart || alignment == Alignment.BottomStart) 0.dp else 0.dp,
+                end = if (alignment == Alignment.TopEnd || alignment == Alignment.BottomEnd) 0.dp else 0.dp,
+                top = if (alignment == Alignment.TopStart || alignment == Alignment.TopEnd) 0.dp else 0.dp,
+                bottom = if (alignment == Alignment.BottomStart || alignment == Alignment.BottomEnd) 0.dp else 0.dp,
             ),
     ) {
+        val isHorizontal = alignment == Alignment.TopStart || alignment == Alignment.TopEnd
         Box(
             modifier = Modifier
                 .align(alignment)
                 .let {
-                    when (alignment) {
-                        Alignment.TopStart, Alignment.TopEnd -> it.width(30.dp).height(3.dp)
-                        else -> it.width(3.dp).height(30.dp)
-                    }
+                    if (isHorizontal) it.width(length).height(thickness)
+                    else it.width(thickness).height(length)
                 }
-                .background(BeamsyncColors.accentPrimary),
+                .background(color.copy(alpha = glowAlpha), RoundedCornerShape(thickness / 2)),
         )
         Box(
             modifier = Modifier
                 .align(alignment)
                 .let {
-                    when (alignment) {
-                        Alignment.TopStart, Alignment.BottomStart -> it.width(3.dp).height(30.dp)
-                        else -> it.width(30.dp).height(3.dp)
-                    }
+                    if (isHorizontal) it.width(length / 3).height(thickness * 3)
+                    else it.width(thickness * 3).height(length / 3)
                 }
-                .background(BeamsyncColors.accentPrimary),
+                .offset(
+                    x = if (!isHorizontal && alignment == Alignment.TopStart) -(thickness) else if (!isHorizontal) 0.dp else 0.dp,
+                    y = if (isHorizontal && alignment == Alignment.TopStart) -(thickness) else if (isHorizontal && alignment == Alignment.TopEnd) 0.dp else 0.dp,
+                )
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            color.copy(alpha = glowAlpha * 0.4f),
+                            color.copy(alpha = glowAlpha * 0.1f),
+                            Color.Transparent,
+                        ),
+                    ),
+                ),
         )
     }
 }
@@ -542,7 +630,7 @@ private fun ConnectingOverlay(onCancel: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             CircularProgressIndicator(
-                color = BeamsyncColors.accentPrimary,
+                color = MaterialTheme.colorScheme.primary,
                 strokeWidth = 3.dp,
                 modifier = Modifier.size(48.dp),
             )
@@ -550,15 +638,13 @@ private fun ConnectingOverlay(onCancel: () -> Unit) {
             Text(
                 text = "Connecting...",
                 color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.bodyLarge,
             )
             Spacer(Modifier.height(BeamsyncSpacing.space6))
             TextButton(onClick = onCancel) {
                 Text(
                     text = "Cancel",
                     color = Color.White.copy(alpha = 0.7f),
-                    fontSize = 14.sp,
                 )
             }
         }
@@ -580,17 +666,18 @@ private fun ErrorContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .imePadding()
             .verticalScroll(scrollState)
             .padding(BeamsyncSpacing.space8),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Spacer(Modifier.weight(1f))
-
         Text(
             text = "CONNECTION FAILED",
-            color = BeamsyncColors.textError,
-            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
@@ -599,21 +686,25 @@ private fun ErrorContent(
 
         Text(
             text = message,
-            color = BeamsyncColors.textSecondary,
-            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
-            lineHeight = 20.sp,
         )
 
         Spacer(Modifier.height(BeamsyncSpacing.space8))
 
-        BeamsyncButton(
-            text = "TRY AGAIN",
-            variant = BeamsyncButtonVariant.Primary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
+        Button(
             onClick = onRetry,
-        )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "TRY AGAIN",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
 
         Spacer(Modifier.height(BeamsyncSpacing.space6))
 
@@ -625,20 +716,20 @@ private fun ErrorContent(
                 modifier = Modifier
                     .weight(1f)
                     .height(1.dp)
-                    .background(BeamsyncColors.strokeDefault),
+                    .background(MaterialTheme.colorScheme.outlineVariant),
             )
             Spacer(Modifier.width(BeamsyncSpacing.space3))
             Text(
                 text = "or enter URL manually",
-                color = BeamsyncColors.textSecondary,
-                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelSmall,
             )
             Spacer(Modifier.width(BeamsyncSpacing.space3))
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .height(1.dp)
-                    .background(BeamsyncColors.strokeDefault),
+                    .background(MaterialTheme.colorScheme.outlineVariant),
             )
         }
 
@@ -651,28 +742,29 @@ private fun ErrorContent(
             placeholder = {
                 Text(
                     text = "http://192.168.1.100:3000/?token=...",
-                    color = BeamsyncColors.textDisabled,
-                    fontSize = 14.sp,
-                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                    ),
                 )
             },
             textStyle = MaterialTheme.typography.bodyMedium.copy(
                 fontFamily = FontFamily.Monospace,
-                color = BeamsyncColors.textPrimary,
+                color = MaterialTheme.colorScheme.onSurface,
             ),
             singleLine = true,
             isError = manualError != null,
             supportingText = if (manualError != null) {
-                { Text(text = manualError, color = BeamsyncColors.surfaceCritical) }
+                { Text(text = manualError, color = MaterialTheme.colorScheme.error) }
             } else null,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BeamsyncColors.strokeActive,
-                unfocusedBorderColor = BeamsyncColors.strokeDefault,
-                unfocusedContainerColor = BeamsyncColors.surfaceRaised,
-                errorBorderColor = BeamsyncColors.surfaceCritical,
-                cursorColor = BeamsyncColors.accentPrimary,
-                focusedTextColor = BeamsyncColors.textPrimary,
-                unfocusedTextColor = BeamsyncColors.textPrimary,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                errorBorderColor = MaterialTheme.colorScheme.error,
+                cursorColor = MaterialTheme.colorScheme.primary,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
             ),
             keyboardOptions = KeyboardOptions(
                 capitalization = KeyboardCapitalization.None,
@@ -681,19 +773,22 @@ private fun ErrorContent(
             keyboardActions = KeyboardActions(
                 onGo = { onManualSubmit() },
             ),
-            shape = RoundedCornerShape(0.dp),
+            shape = MaterialTheme.shapes.medium,
         )
 
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 
-        BeamsyncButton(
-            text = "CONNECT",
-            variant = BeamsyncButtonVariant.DataAction,
-            size = BeamsyncButtonSize.Default,
-            fullWidth = true,
-            enabled = manualUrl.isNotBlank(),
+        OutlinedButton(
             onClick = onManualSubmit,
-        )
+            modifier = Modifier.fillMaxWidth(),
+            enabled = manualUrl.isNotBlank(),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = "CONNECT",
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
 
         if (recentConnections.isNotEmpty()) {
             Spacer(Modifier.height(BeamsyncSpacing.space8))
@@ -701,7 +796,7 @@ private fun ErrorContent(
             Text(
                 text = "RECENT CONNECTIONS",
                 style = MaterialTheme.typography.labelSmall,
-                color = BeamsyncColors.textSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 letterSpacing = 1.sp,
             )
 
@@ -711,9 +806,9 @@ private fun ErrorContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(0.dp))
+                        .clip(MaterialTheme.shapes.small)
                         .clickable { onConnectRecent(rc) }
-                        .background(BeamsyncColors.surfaceRaised)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space3),
                 ) {
                     Row(
@@ -725,19 +820,19 @@ private fun ErrorContent(
                             Text(
                                 text = rc.label,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = BeamsyncColors.textPrimary,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontFamily = FontFamily.Monospace,
                             )
                             Text(
                                 text = "Tap to reconnect",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = BeamsyncColors.textSecondary,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         Text(
                             text = "CONNECT",
                             style = MaterialTheme.typography.labelSmall,
-                            color = BeamsyncColors.accentPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                         )
@@ -747,7 +842,7 @@ private fun ErrorContent(
             }
         }
 
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(BeamsyncSpacing.space8))
     }
 }
 
@@ -759,6 +854,8 @@ private fun DeniedContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = BeamsyncSpacing.space8)
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -791,22 +888,29 @@ private fun DeniedContent(
 
         Spacer(Modifier.height(BeamsyncSpacing.space10))
 
-        BeamsyncButton(
-            text = stringResource(R.string.open_settings),
-            variant = BeamsyncButtonVariant.Secondary,
-            size = BeamsyncButtonSize.Large,
-            fullWidth = true,
+        OutlinedButton(
             onClick = onOpenSettings,
-        )
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BeamsyncSpacing.space12),
+            shape = MaterialTheme.shapes.medium,
+        ) {
+            Text(
+                text = stringResource(R.string.open_settings),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
 
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 
-        BeamsyncButton(
-            text = stringResource(R.string.try_again),
-            variant = BeamsyncButtonVariant.Ghost,
-            size = BeamsyncButtonSize.Default,
-            fullWidth = true,
+        TextButton(
             onClick = onRetry,
-        )
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = stringResource(R.string.try_again),
+                style = MaterialTheme.typography.labelLarge,
+            )
+        }
     }
 }

@@ -9,14 +9,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 object BeamsyncHapticFeedback {
+    @Volatile
+    private var cachedVibrator: Vibrator? = null
+
     private fun getVibrator(context: Context): Vibrator {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val cached = cachedVibrator
+        if (cached != null) return cached
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
             manager.defaultVibrator
         } else {
             @Suppress("DEPRECATION")
             context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
+        cachedVibrator = vibrator
+        return vibrator
     }
 
     fun click(context: Context) {

@@ -23,9 +23,12 @@ android {
 
     buildTypes {
         release {
-            optimization {
-                enable = false
-            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
@@ -70,6 +73,9 @@ dependencies {
 
     // Image loading
     implementation(libs.coil)
+
+    // SAF document tree
+    implementation("androidx.documentfile:documentfile:1.0.1")
 
     // Testing
     testImplementation(libs.junit)

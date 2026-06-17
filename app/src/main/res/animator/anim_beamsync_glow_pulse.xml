@@ -1,0 +1,49 @@
+<!--
+  anim_beamsync_glow_pulse.xml
+  ════════════════════════════════════════════════════════════════
+  objectAnimator — drives the alpha of named glow layers inside
+  ic_beamsync.xml.
+
+  Motion design rationale (MD3 compliant):
+  ─────────────────────────────────────────
+  • Interpolator  fast_out_slow_in
+      The glow "lights up" quickly then eases to full brightness,
+      mimicking the charging transient of a real neon tube. The
+      reverse (slow_out_fast_in by nature of repeatMode="reverse")
+      gives a natural, unhurried decay — exactly right for ambient
+      idle animation.
+
+  • Duration  1600 ms
+      Below 1000 ms feels frantic; above 2000 ms feels dead.
+      1600 ms sits in the MD3 "expressive" window for looping
+      motion that should read as organic and alive.
+
+  • repeatMode  reverse
+      Produces a smooth A→B→A ping-pong without any discontinuity
+      at the loop boundary — no visual "jump" when the cycle resets.
+
+  • valueFrom  0.15 → valueTo  0.72
+      Floor of 0.15 keeps the glow present at minimum (the element
+      never disappears completely, preserving spatial context).
+      Ceiling of 0.72 is bright enough to read clearly against
+      the #020502 background without blowing out to pure white.
+
+  Usage in AVD:
+      <target android:name="border_glow_outer"
+              android:animation="@animator/anim_beamsync_glow_pulse"/>
+      <target android:name="border_glow_inner"
+              android:animation="@animator/anim_beamsync_glow_pulse"/>
+      <target android:name="bolt_glow"
+              android:animation="@animator/anim_beamsync_glow_pulse"/>
+  ════════════════════════════════════════════════════════════════
+-->
+<objectAnimator
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="1600"
+    android:interpolator="@android:interpolator/fast_out_slow_in"
+    android:propertyName="alpha"
+    android:repeatCount="infinite"
+    android:repeatMode="reverse"
+    android:valueFrom="0.15"
+    android:valueTo="0.72"
+    android:valueType="floatType"/>
