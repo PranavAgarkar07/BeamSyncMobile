@@ -4,6 +4,8 @@
 
 **Build:** 10000 · **Date:** 2026-06-18 · **Min SDK:** 26 · **Target SDK:** 36
 
+Wireless file transfers between Android phone and desktop — no cables, no cloud, no sign-up.
+
 ---
 
 ### Overview
@@ -77,13 +79,8 @@ No storage permission required on Android 10+ — uses `MediaStore` and SAF.
 
 ### Contributors
 
-- Engineering & Design — [@pranav]
+- Engineering & Design — [@PranavAgarkar07](https://github.com/PranavAgarkar07)
 
 ---
 
-### Links
 
-- [BeamSync Desktop](https://beamsync.app)
-- [BeamSync Mobile Repository](https://github.com/anomalyco/BeamSyncMobile)
-- [Design System](DESIGN_SYSTEM.md)
-- [Issue Tracker](https://github.com/anomalyco/BeamSyncMobile/issues)
