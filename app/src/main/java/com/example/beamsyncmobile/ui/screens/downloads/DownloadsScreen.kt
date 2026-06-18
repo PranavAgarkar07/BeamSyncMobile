@@ -1037,6 +1037,7 @@ private fun ReceivedFileItem(file: ReceivedFile) {
         val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
         sdf.format(Date(file.timestamp))
     }
+    val formattedSize = remember(file.size) { formatSize(file.size) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1082,7 +1083,7 @@ private fun ReceivedFileItem(file: ReceivedFile) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = formatSize(file.size),
+                        text = formattedSize,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontFamily = FontFamily.Monospace,

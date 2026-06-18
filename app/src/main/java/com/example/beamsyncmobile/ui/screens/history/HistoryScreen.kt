@@ -92,6 +92,7 @@ import java.util.Date
 import java.util.Locale
 
 private enum class SortOrder { NEWEST_FIRST, OLDEST_FIRST }
+private val TABS = listOf("Receive", "Send")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,10 +102,9 @@ fun HistoryScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val tabs = listOf("Receive", "Send")
     val focusManager = LocalFocusManager.current
 
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
+    val pagerState = rememberPagerState(pageCount = { TABS.size })
     var filterStatus by remember { mutableStateOf<TransferStatus?>(null) }
     var sortOrder by remember { mutableStateOf(SortOrder.NEWEST_FIRST) }
     var searchQuery by remember { mutableStateOf("") }
@@ -176,7 +176,7 @@ fun HistoryScreen(
                 selectedTabIndex = pagerState.currentPage,
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
-                tabs.forEachIndexed { index, title ->
+                TABS.forEachIndexed { index, title ->
                     val selected = pagerState.currentPage == index
                     Tab(
                         selected = selected,
@@ -355,6 +355,8 @@ private fun filterChipColors() =
 private fun HistoryItem(record: TransferRecord, onDelete: () -> Unit) {
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy \u00B7 h:mm a", Locale.getDefault()) }
     val isSuccess = record.status == TransferStatus.SUCCESS
+    val formattedSize = remember(record.fileSize) { formatSize(record.fileSize) }
+    val formattedDate = remember(record.timestamp) { dateFormat.format(Date(record.timestamp)) }
 
     Row(
         modifier = Modifier
@@ -421,13 +423,13 @@ private fun HistoryItem(record: TransferRecord, onDelete: () -> Unit) {
                 )
                 Spacer(Modifier.width(BeamsyncSpacing.space2))
                 Text(
-                    text = formatSize(record.fileSize),
+                    text = formattedSize,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
-                text = dateFormat.format(Date(record.timestamp)),
+                text = formattedDate,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             )

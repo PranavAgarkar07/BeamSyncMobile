@@ -404,7 +404,7 @@ private fun FileRow(
 
     val isImage = file.isImage
     val displayName = file.name
-    val displaySize = formatBytes(file.size)
+    val displaySize = remember(file.size) { formatBytes(file.size) }
 
     val surface = MaterialTheme.colorScheme.surface
     val surfaceContainerLow = MaterialTheme.colorScheme.surfaceContainerLow

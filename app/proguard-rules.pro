@@ -1,7 +1,24 @@
-# ML Kit Barcode Scanning
--keep class com.google.mlkit.vision.barcode.** { *; }
--keep class com.google.android.gms.vision.barcode.** { *; }
--dontwarn com.google.mlkit.vision.barcode.**
+# ── Compose ────────────────────────────────────────────────────────
+-keep class androidx.compose.** { *; }
+-keepclassmembers class * {
+    @androidx.compose.runtime.Stable <fields>;
+}
+
+# ── App data classes (Gson serialization) ─────────────────────────
+-keep class com.example.beamsyncmobile.data.history.** { *; }
+-keep class com.example.beamsyncmobile.ui.screens.downloads.ReceiveViewModelKt { *; }
+-keep class com.example.beamsyncmobile.ui.screens.uploads.UploadViewModelKt { *; }
+-keep class com.example.beamsyncmobile.ui.screens.scan.QrScannerViewModelKt { *; }
+
+# ML Kit (reflection-based DI — entire library must be kept un-obfuscated)
+-keep class com.google.mlkit.** { *; }
+-keepclassmembers class com.google.mlkit.** {
+    <init>();
+}
+-keep class com.google.android.gms.vision.** { *; }
+-keepclassmembers class com.google.android.gms.vision.** {
+    <init>();
+}
 
 # OkHttp
 -dontwarn okhttp3.**
@@ -25,3 +42,7 @@
 # Coil
 -dontwarn coil.**
 -keep class coil.** { *; }
+
+# Kotlin Coroutines
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
