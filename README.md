@@ -20,9 +20,9 @@ BeamSync pairs your Android phone with the [BeamSync desktop server](https://bea
 
 ## Screenshots
 
-| Permissions | Home | History | Uploads |
+| Permissions | Home | Uploads | History |
 |---|---|---|---|
-| ![](screenshots/permissions.png) | ![](screenshots/home.png) | ![](screenshots/history.png) | ![](screenshots/uploads.png) |
+| ![](screenshots/permissions.jpg) | ![](screenshots/homescreen.jpg) | ![](screenshots/uploadscreen.jpg) | ![](screenshots/history.jpg) |
 
 ---
 
