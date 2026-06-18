@@ -2,7 +2,7 @@
 
 **Wireless file transfers between phone and desktop — no cables, no cloud, no sign-up.**
 
-BeamSync pairs your Android phone with the [BeamSync desktop server](https://beamsync.app) over your local Wi-Fi network. Scan a QR code (or enter a URL) and instantly browse, upload, and download files at full LAN speed.
+BeamSync pairs your Android phone with the [BeamSync desktop server](https://pranavagarkar07.github.io/BeamSync/) over your local Wi-Fi network. Scan a QR code (or enter a URL) and instantly browse, upload, and download files at full LAN speed.
 
 ---
 
@@ -91,7 +91,7 @@ Desktop Beamsync Server ←→ LAN HTTP ←→ OkHttp Client ←→ ViewModel �
 - Android Studio Ladybug (2024.2) or later
 - JDK 17+
 - Android SDK 36 (Android 16)
-- A [BeamSync desktop server](https://beamsync.app) running on the same LAN
+- A [BeamSync desktop server](https://pranavagarkar07.github.io/BeamSync/) running on the same LAN
 
 ### Clone & Build
 
