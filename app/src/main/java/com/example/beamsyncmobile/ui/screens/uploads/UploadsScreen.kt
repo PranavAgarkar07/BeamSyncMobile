@@ -76,6 +76,7 @@ private val MIME_TYPES = arrayOf("*/*")
 
 @Composable
 fun UploadsScreen(
+    modifier: Modifier = Modifier,
     viewModel: UploadViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -122,7 +123,7 @@ fun UploadsScreen(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -73,6 +74,9 @@ dependencies {
 
     // Image loading
     implementation(libs.coil)
+
+    // Serialization (type-safe navigation)
+    implementation(libs.kotlinx.serialization.json)
 
     // SAF document tree
     implementation("androidx.documentfile:documentfile:1.0.1")

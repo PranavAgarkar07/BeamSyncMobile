@@ -9,22 +9,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.example.beamsyncmobile.network.BeamSyncClient
 import com.example.beamsyncmobile.network.CurrentConnection
 import com.example.beamsyncmobile.ui.screens.downloads.DownloadsScreen
@@ -55,48 +49,39 @@ fun BeamsyncNavGraph() {
             (0.299 * r + 0.587 * g + 0.114 * b) > 128
     }
 
-    val context = LocalContext.current
-    var permissionsDone by remember { mutableStateOf(context.getSharedPreferences("beamsync_prefs", 0).getBoolean("permissions_done", false)) }
-
-    if (!permissionsDone) {
-        PermissionsScreen(
-            onComplete = {
-                context.getSharedPreferences("beamsync_prefs", 0).edit().putBoolean("permissions_done", true).apply()
-                permissionsDone = true
-            },
-        )
-        return
-    }
-
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Home.route,
+        startDestination = Permissions,
         modifier = Modifier.fillMaxSize(),
     ) {
-        composable(
-            Screen.Home.route,
+        composable<Permissions>(
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+        ) {
+            PermissionsScreen(
+                onComplete = {
+                    navController.navigate(Home) {
+                        popUpTo<Permissions> { inclusive = true }
+                    }
+                },
+            )
+        }
+
+        composable<Home>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {
             NewHomeScreen(
-                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
-                onNavigateToHistory = { navController.navigate(Screen.History.route) },
-                onNavigateToAbout = { navController.navigate(Screen.About.route) },
-                onReceiveScanQr = {
-                    navController.navigate(Screen.QrScanner.createRoute("receive"))
-                },
-                onReceiveManualUrl = {
-                    navController.navigate(Screen.QrScanner.createRoute("receive"))
-                },
-                onSendScanQr = {
-                    navController.navigate(Screen.QrScanner.createRoute("send"))
-                },
-                onSendManualUrl = {
-                    navController.navigate(Screen.QrScanner.createRoute("send"))
-                },
+                onNavigateToSettings = { navController.navigate(Settings) },
+                onNavigateToHistory = { navController.navigate(History) },
+                onNavigateToAbout = { navController.navigate(About) },
+                onReceiveScanQr = { navController.navigate(QrScanner(mode = "receive")) },
+                onReceiveManualUrl = { navController.navigate(QrScanner(mode = "receive")) },
+                onSendScanQr = { navController.navigate(QrScanner(mode = "send")) },
+                onSendManualUrl = { navController.navigate(QrScanner(mode = "send")) },
                 onConnectFromUrl = { url, mode ->
                     scope.launch {
                         val result = withContext(Dispatchers.IO) {
@@ -105,12 +90,12 @@ fun BeamsyncNavGraph() {
                         result.onSuccess { connection ->
                             CurrentConnection.set(connection)
                             if (mode == "receive") {
-                                navController.navigate(Screen.Downloads.route) {
-                                    popUpTo(Screen.Home.route)
+                                navController.navigate(Downloads) {
+                                    popUpTo<Home>()
                                 }
                             } else {
-                                navController.navigate(Screen.Uploads.route) {
-                                    popUpTo(Screen.Home.route)
+                                navController.navigate(Uploads) {
+                                    popUpTo<Home>()
                                 }
                             }
                         }
@@ -119,34 +104,31 @@ fun BeamsyncNavGraph() {
             )
         }
 
-        composable(
-            Screen.QrScanner.route,
-            arguments = listOf(navArgument("mode") { type = NavType.StringType }),
+        composable<QrScanner>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) { backStackEntry ->
-            val mode = backStackEntry.arguments?.getString("mode") ?: "receive"
+            val qrScanner: QrScanner = backStackEntry.toRoute()
             val scannerViewModel: QrScannerViewModel = viewModel()
 
             QrScannerScreen(
                 viewModel = scannerViewModel,
                 onConnected = { connection ->
                     CurrentConnection.set(connection)
-                    if (mode == "receive") {
-                        navController.navigate(Screen.Downloads.route) {
-                            popUpTo(Screen.Home.route)
+                    if (qrScanner.mode == "receive") {
+                        navController.navigate(Downloads) {
+                            popUpTo<Home>()
                         }
                     } else {
-                        navController.navigate(Screen.Uploads.route) {
-                            popUpTo(Screen.Home.route)
+                        navController.navigate(Uploads) {
+                            popUpTo<Home>()
                         }
                     }
                 },
             )
         }
 
-        composable(
-            Screen.Downloads.route,
+        composable<Downloads>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {
@@ -161,26 +143,23 @@ fun BeamsyncNavGraph() {
             DownloadsScreen(viewModel = viewModel)
         }
 
-        composable(
-            Screen.Uploads.route,
+        composable<Uploads>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {
             UploadsScreen()
         }
 
-        composable(
-            Screen.Settings.route,
+        composable<Settings>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {
             SettingsScreen(
-                onNavigateToAbout = { navController.navigate(Screen.About.route) },
+                onNavigateToAbout = { navController.navigate(About) },
             )
         }
 
-        composable(
-            Screen.About.route,
+        composable<About>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {
@@ -189,8 +168,7 @@ fun BeamsyncNavGraph() {
             )
         }
 
-        composable(
-            Screen.History.route,
+        composable<History>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {

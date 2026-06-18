@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun NewHomeScreen(
+    modifier: Modifier = Modifier,
     onNavigateToSettings: () -> Unit,
     onNavigateToHistory: () -> Unit,
     onNavigateToAbout: () -> Unit,
@@ -70,6 +71,7 @@ fun NewHomeScreen(
     var showSendSheet by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
+        modifier = modifier,
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(modifier = Modifier.fillMaxHeight()) {
@@ -206,23 +208,29 @@ fun NewHomeScreen(
         }
     }
 
+    val receiveGalleryUrl = remember(showReceiveSheet, onConnectFromUrl) {
+        { url: String -> onConnectFromUrl(url, "receive") }
+    }
     if (showReceiveSheet) {
         ConnectionOptionsSheet(
             mode = "receive",
             onDismiss = { showReceiveSheet = false },
             onScanQr = onReceiveScanQr,
             onManualUrl = onReceiveManualUrl,
-            onGalleryUrl = { url -> onConnectFromUrl(url, "receive") },
+            onGalleryUrl = receiveGalleryUrl,
         )
     }
 
+    val sendGalleryUrl = remember(showSendSheet, onConnectFromUrl) {
+        { url: String -> onConnectFromUrl(url, "send") }
+    }
     if (showSendSheet) {
         ConnectionOptionsSheet(
             mode = "send",
             onDismiss = { showSendSheet = false },
             onScanQr = onSendScanQr,
             onManualUrl = onSendManualUrl,
-            onGalleryUrl = { url -> onConnectFromUrl(url, "send") },
+            onGalleryUrl = sendGalleryUrl,
         )
     }
 }

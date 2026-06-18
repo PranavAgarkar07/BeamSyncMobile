@@ -2,17 +2,10 @@ package com.example.beamsyncmobile.ui.screens.scan
 
 import androidx.activity.compose.BackHandler
 import androidx.camera.core.ExperimentalGetImage
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,14 +25,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -55,29 +43,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.beamsyncmobile.R
 import com.example.beamsyncmobile.network.ServerConnection
+import com.example.beamsyncmobile.ui.components.ConnectingOverlay
+import com.example.beamsyncmobile.ui.components.ScannerOverlay
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun QrScannerScreen(
+    modifier: Modifier = Modifier,
     viewModel: QrScannerViewModel,
     onConnected: (ServerConnection) -> Unit,
 ) {
@@ -102,7 +90,7 @@ fun QrScannerScreen(
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
     ) {
@@ -116,7 +104,8 @@ fun QrScannerScreen(
                     onAnalyze = { imageProxy -> viewModel.analyzeImage(imageProxy) },
                 )
 
-                ScanningOverlay(
+                ScannerOverlay(
+                    hintText = "Align QR code within the frame",
                     torchEnabled = torchEnabled,
                     onToggleTorch = viewModel::toggleTorch,
                     onCancel = viewModel::reset,
@@ -166,7 +155,7 @@ fun QrScannerScreen(
         }
 
         if (scannerState is ScannerState.Connecting) {
-            ConnectingOverlay(onCancel = viewModel::reset)
+            ConnectingOverlay(label = "Connecting...", onCancel = viewModel::reset)
         }
     }
 }
@@ -374,280 +363,6 @@ private fun WaitingContent(
         }
 
         Spacer(Modifier.height(BeamsyncSpacing.space8))
-    }
-}
-
-@Composable
-private fun ScanningOverlay(
-    torchEnabled: Boolean,
-    onToggleTorch: () -> Unit,
-    onCancel: () -> Unit,
-) {
-    val infiniteTransition = rememberInfiniteTransition()
-
-    val scanLineProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1800, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-    )
-
-    val bracketGlow by infiniteTransition.animateFloat(
-        initialValue = 0.6f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-    )
-
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-    )
-
-    val primary = MaterialTheme.colorScheme.primary
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.55f)),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(280.dp)
-                .align(Alignment.Center),
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-            )
-
-            CornerBracket(
-                alignment = Alignment.TopStart,
-                length = 36.dp,
-                thickness = 3.dp,
-                color = primary,
-                glowAlpha = bracketGlow,
-            )
-            CornerBracket(
-                alignment = Alignment.TopEnd,
-                length = 36.dp,
-                thickness = 3.dp,
-                color = primary,
-                glowAlpha = bracketGlow,
-            )
-            CornerBracket(
-                alignment = Alignment.BottomStart,
-                length = 36.dp,
-                thickness = 3.dp,
-                color = primary,
-                glowAlpha = bracketGlow,
-            )
-            CornerBracket(
-                alignment = Alignment.BottomEnd,
-                length = 36.dp,
-                thickness = 3.dp,
-                color = primary,
-                glowAlpha = bracketGlow,
-            )
-
-            val scanOffset = (280.dp - 4.dp) * scanLineProgress
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .align(Alignment.TopStart)
-                    .offset(y = scanOffset)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                primary.copy(alpha = 0.2f),
-                                primary.copy(alpha = 0.6f),
-                                primary,
-                                primary.copy(alpha = 0.6f),
-                                primary.copy(alpha = 0.2f),
-                                Color.Transparent,
-                            ),
-                        ),
-                    ),
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .align(Alignment.TopStart)
-                    .offset(y = scanOffset + 4.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                primary.copy(alpha = 0.05f),
-                                primary.copy(alpha = 0.15f),
-                                primary.copy(alpha = 0.05f),
-                                Color.Transparent,
-                            ),
-                        ),
-                    ),
-            )
-        }
-
-        Text(
-            text = "Align QR code within the frame",
-            color = Color.White.copy(alpha = 0.7f),
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier
-                .align(Alignment.Center)
-                .padding(top = 180.dp),
-            textAlign = TextAlign.Center,
-        )
-
-        Text(
-            text = "SCANNING...",
-            color = primary.copy(alpha = pulseAlpha),
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 3.sp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 100.dp),
-            textAlign = TextAlign.Center,
-        )
-
-        TextButton(
-            onClick = onCancel,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(BeamsyncSpacing.space4),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Cancel scanning",
-                tint = Color.White,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = "Cancel",
-                color = Color.White,
-            )
-        }
-
-        IconButton(
-            onClick = onToggleTorch,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(BeamsyncSpacing.space6)
-                .size(48.dp)
-                .background(
-                    Color.White.copy(alpha = 0.2f),
-                    MaterialTheme.shapes.extraLarge,
-                ),
-            colors = IconButtonDefaults.iconButtonColors(
-                contentColor = Color.White,
-            ),
-        ) {
-            Icon(
-                imageVector = if (torchEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                contentDescription = if (torchEnabled) "Disable flash" else "Enable flash",
-                tint = if (torchEnabled) MaterialTheme.colorScheme.tertiary else Color.White,
-            )
-        }
-    }
-}
-
-@Composable
-private fun BoxScope.CornerBracket(
-    alignment: Alignment,
-    length: Dp = 36.dp,
-    thickness: Dp = 3.dp,
-    color: Color,
-    glowAlpha: Float = 1f,
-) {
-    Box(
-        modifier = Modifier
-            .size(length + 2.dp)
-            .align(alignment)
-            .padding(
-                start = if (alignment == Alignment.TopStart || alignment == Alignment.BottomStart) 0.dp else 0.dp,
-                end = if (alignment == Alignment.TopEnd || alignment == Alignment.BottomEnd) 0.dp else 0.dp,
-                top = if (alignment == Alignment.TopStart || alignment == Alignment.TopEnd) 0.dp else 0.dp,
-                bottom = if (alignment == Alignment.BottomStart || alignment == Alignment.BottomEnd) 0.dp else 0.dp,
-            ),
-    ) {
-        val isHorizontal = alignment == Alignment.TopStart || alignment == Alignment.TopEnd
-        Box(
-            modifier = Modifier
-                .align(alignment)
-                .let {
-                    if (isHorizontal) it.width(length).height(thickness)
-                    else it.width(thickness).height(length)
-                }
-                .background(color.copy(alpha = glowAlpha), RoundedCornerShape(thickness / 2)),
-        )
-        Box(
-            modifier = Modifier
-                .align(alignment)
-                .let {
-                    if (isHorizontal) it.width(length / 3).height(thickness * 3)
-                    else it.width(thickness * 3).height(length / 3)
-                }
-                .offset(
-                    x = if (!isHorizontal && alignment == Alignment.TopStart) -(thickness) else if (!isHorizontal) 0.dp else 0.dp,
-                    y = if (isHorizontal && alignment == Alignment.TopStart) -(thickness) else if (isHorizontal && alignment == Alignment.TopEnd) 0.dp else 0.dp,
-                )
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            color.copy(alpha = glowAlpha * 0.4f),
-                            color.copy(alpha = glowAlpha * 0.1f),
-                            Color.Transparent,
-                        ),
-                    ),
-                ),
-        )
-    }
-}
-
-@Composable
-private fun ConnectingOverlay(onCancel: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f))
-            .clickable(enabled = false) { },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.primary,
-                strokeWidth = 3.dp,
-                modifier = Modifier.size(48.dp),
-            )
-            Spacer(Modifier.height(BeamsyncSpacing.space4))
-            Text(
-                text = "Connecting...",
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge,
-            )
-            Spacer(Modifier.height(BeamsyncSpacing.space6))
-            TextButton(onClick = onCancel) {
-                Text(
-                    text = "Cancel",
-                    color = Color.White.copy(alpha = 0.7f),
-                )
-            }
-        }
     }
 }
 

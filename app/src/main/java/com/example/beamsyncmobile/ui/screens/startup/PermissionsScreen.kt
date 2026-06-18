@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -88,7 +89,10 @@ private fun frequencyLabel(freq: Int): String = when {
 }
 
 @Composable
-fun PermissionsScreen(onComplete: () -> Unit) {
+fun PermissionsScreen(
+    modifier: Modifier = Modifier,
+    onComplete: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -134,7 +138,7 @@ fun PermissionsScreen(onComplete: () -> Unit) {
     val hasIssue = wifiStatus.isConnected && wifiStatus.isHotspot && (wifiStatus.frequencyMHz ?: 9999) < 5000
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
@@ -321,4 +325,10 @@ private fun StatusCard(
             )
         }
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun PermissionsScreenPreview() {
+    PermissionsScreen(onComplete = {})
 }

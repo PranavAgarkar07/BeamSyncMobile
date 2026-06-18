@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,6 +62,7 @@ import com.example.beamsyncmobile.ui.theme.ThemeMode
 
 @Composable
 fun SettingsScreen(
+    modifier: Modifier = Modifier,
     onNavigateToAbout: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -75,7 +77,7 @@ fun SettingsScreen(
     val saveLocationMode = remember(saveLocationVersion) { SavePathManager.getMode(context) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
             .statusBarsPadding()
@@ -299,9 +301,9 @@ fun SettingsScreen(
                                             .size(8.dp)
                                             .clip(RoundedCornerShape(4.dp))
                                             .background(MaterialTheme.colorScheme.onPrimary),
-                                    )
-                                }
-                            }
+        )
+    }
+}
                             Spacer(Modifier.width(BeamsyncSpacing.space3))
                             Text(
                                 text = label,
@@ -597,4 +599,10 @@ private fun SettingsChipRow(
             onSelectionChange = onSelectionChange,
         )
     }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+private fun SettingsScreenPreview() {
+    SettingsScreen(onNavigateToAbout = {})
 }

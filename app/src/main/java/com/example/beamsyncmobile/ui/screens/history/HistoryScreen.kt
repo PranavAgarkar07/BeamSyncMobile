@@ -89,7 +89,10 @@ private enum class SortOrder { NEWEST_FIRST, OLDEST_FIRST }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(onBack: () -> Unit) {
+fun HistoryScreen(
+    modifier: Modifier = Modifier,
+    onBack: () -> Unit,
+) {
     val context = LocalContext.current
     val tabs = listOf("Receive", "Send")
 
@@ -117,6 +120,7 @@ fun HistoryScreen(onBack: () -> Unit) {
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
@@ -181,9 +185,10 @@ fun HistoryScreen(onBack: () -> Unit) {
                     .padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space2),
                 horizontalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
             ) {
-                FilterChip(selected = filterStatus == null, onClick = { filterStatus = null }, label = { Text("All") }, colors = filterChipColors())
-                FilterChip(selected = filterStatus == TransferStatus.SUCCESS, onClick = { filterStatus = TransferStatus.SUCCESS }, label = { Text("Successful") }, colors = filterChipColors())
-                FilterChip(selected = filterStatus == TransferStatus.FAILED, onClick = { filterStatus = TransferStatus.FAILED }, label = { Text("Failed") }, colors = filterChipColors())
+                val chipColors = filterChipColors()
+                FilterChip(selected = filterStatus == null, onClick = { filterStatus = null }, label = { Text("All") }, colors = chipColors)
+                FilterChip(selected = filterStatus == TransferStatus.SUCCESS, onClick = { filterStatus = TransferStatus.SUCCESS }, label = { Text("Successful") }, colors = chipColors)
+                FilterChip(selected = filterStatus == TransferStatus.FAILED, onClick = { filterStatus = TransferStatus.FAILED }, label = { Text("Failed") }, colors = chipColors)
             }
 
             // Search field
@@ -254,9 +259,10 @@ fun HistoryScreen(onBack: () -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
                     ) {
                         items(filtered, key = { it.id }) { record ->
+                            val onDeleteRecord = remember(record) { { deleteRecord(record) } }
                             HistoryItem(
                                 record = record,
-                                onDelete = { deleteRecord(record) },
+                                onDelete = onDeleteRecord,
                             )
                         }
                     }
@@ -285,10 +291,11 @@ fun HistoryScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun filterChipColors() = FilterChipDefaults.filterChipColors(
-    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-)
+private fun filterChipColors() =
+    FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    )
 
 @Composable
 private fun HistoryItem(record: TransferRecord, onDelete: () -> Unit) {
