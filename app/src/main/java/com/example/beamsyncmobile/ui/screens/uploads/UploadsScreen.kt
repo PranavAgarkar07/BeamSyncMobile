@@ -2,6 +2,7 @@ package com.example.beamsyncmobile.ui.screens.uploads
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -78,7 +80,9 @@ private val MIME_TYPES = arrayOf("*/*")
 fun UploadsScreen(
     modifier: Modifier = Modifier,
     viewModel: UploadViewModel = viewModel(),
+    onBack: () -> Unit = {},
 ) {
+    BackHandler(onBack = onBack)
     val context = LocalContext.current
     val files by viewModel.files.collectAsState()
     val uploadState by viewModel.uploadState.collectAsState()
@@ -129,6 +133,15 @@ fun UploadsScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        }
+
         ConnectionBar(status = connectionStatus)
 
         AnimatedContent(

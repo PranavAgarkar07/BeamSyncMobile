@@ -1,5 +1,6 @@
 package com.example.beamsyncmobile.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -63,8 +66,10 @@ import com.example.beamsyncmobile.ui.theme.ThemeMode
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
+    onBack: () -> Unit = {},
     onNavigateToAbout: () -> Unit,
 ) {
+    BackHandler(onBack = onBack)
     val context = LocalContext.current
     var transferMode by remember { mutableStateOf(1) }
     var autoReconnect by remember { mutableStateOf(true) }
@@ -85,15 +90,24 @@ fun SettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = BeamsyncSpacing.space6),
     ) {
-        Spacer(Modifier.height(BeamsyncSpacing.space6))
+        Spacer(Modifier.height(BeamsyncSpacing.space2))
 
-        Text(
-            text = "SETTINGS",
-            color = MaterialTheme.colorScheme.onBackground,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.5).sp,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Spacer(Modifier.width(BeamsyncSpacing.space2))
+            Text(
+                text = "SETTINGS",
+                color = MaterialTheme.colorScheme.onBackground,
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-0.5).sp,
+            )
+        }
 
         Spacer(Modifier.height(BeamsyncSpacing.space3))
 

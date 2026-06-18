@@ -1,12 +1,11 @@
 package com.example.beamsyncmobile.ui.screens.history
 
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -22,11 +21,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.CloudDownload
@@ -34,11 +37,11 @@ import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,20 +54,22 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +86,7 @@ import com.example.beamsyncmobile.data.history.TransferDirection
 import com.example.beamsyncmobile.data.history.TransferRecord
 import com.example.beamsyncmobile.data.history.TransferStatus
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -94,9 +100,11 @@ fun HistoryScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val tabs = listOf("Receive", "Send")
+    val focusManager = LocalFocusManager.current
 
-    var tabIndex by remember { mutableIntStateOf(0) }
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
     var filterStatus by remember { mutableStateOf<TransferStatus?>(null) }
     var sortOrder by remember { mutableStateOf(SortOrder.NEWEST_FIRST) }
     var searchQuery by remember { mutableStateOf("") }
@@ -104,15 +112,16 @@ fun HistoryScreen(
     var showClearDialog by remember { mutableStateOf(false) }
 
     val records = remember { mutableStateListOf<TransferRecord>().also { it.addAll(HistoryRepository.getHistory(context)) } }
-    val focusManager = LocalFocusManager.current
 
-    val filtered by remember { derivedStateOf {
-        records
-            .filter { if (tabIndex == 0) it.direction == TransferDirection.RECEIVE else it.direction == TransferDirection.SEND }
-            .filter { filterStatus == null || it.status == filterStatus }
-            .filter { searchQuery.isBlank() || it.fileName.contains(searchQuery, ignoreCase = true) }
-            .let { if (sortOrder == SortOrder.NEWEST_FIRST) it.sortedByDescending { r -> r.timestamp } else it.sortedBy { r -> r.timestamp } }
-    }}
+    val filtered by remember {
+        derivedStateOf {
+            records
+                .filter { if (pagerState.currentPage == 0) it.direction == TransferDirection.RECEIVE else it.direction == TransferDirection.SEND }
+                .filter { filterStatus == null || it.status == filterStatus }
+                .filter { searchQuery.isBlank() || it.fileName.contains(searchQuery, ignoreCase = true) }
+                .let { if (sortOrder == SortOrder.NEWEST_FIRST) it.sortedByDescending { r -> r.timestamp } else it.sortedBy { r -> r.timestamp } }
+        }
+    }
 
     fun deleteRecord(record: TransferRecord) {
         HistoryRepository.deleteRecord(context, record.id)
@@ -164,43 +173,96 @@ fun HistoryScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             PrimaryTabRow(
-                selectedTabIndex = tabIndex,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
+                selectedTabIndex = pagerState.currentPage,
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {
                 tabs.forEachIndexed { index, title ->
+                    val selected = pagerState.currentPage == index
                     Tab(
-                        selected = tabIndex == index,
-                        onClick = { tabIndex = index },
-                        text = { Text(title, fontWeight = if (tabIndex == index) FontWeight.Bold else FontWeight.Normal) },
+                        selected = selected,
+                        onClick = {
+                            scope.launch { pagerState.animateScrollToPage(index) }
+                        },
+                        selectedContentColor = MaterialTheme.colorScheme.primary,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        text = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
+                            ) {
+                                Icon(
+                                    imageVector = if (index == 0) Icons.Default.CloudDownload else Icons.Default.CloudUpload,
+                                    contentDescription = null,
+                                    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(BeamsyncSpacing.iconDefault),
+                                )
+                                Text(
+                                    title,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                )
+                            }
+                        },
                     )
                 }
             }
 
-            // Filter chips row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space2),
-                horizontalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
+            AnimatedVisibility(
+                visible = filterStatus != null || searchQuery.isNotEmpty(),
+                enter = fadeIn(),
+                exit = fadeOut(),
             ) {
-                val chipColors = filterChipColors()
-                FilterChip(selected = filterStatus == null, onClick = { filterStatus = null }, label = { Text("All") }, colors = chipColors)
-                FilterChip(selected = filterStatus == TransferStatus.SUCCESS, onClick = { filterStatus = TransferStatus.SUCCESS }, label = { Text("Successful") }, colors = chipColors)
-                FilterChip(selected = filterStatus == TransferStatus.FAILED, onClick = { filterStatus = TransferStatus.FAILED }, label = { Text("Failed") }, colors = chipColors)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space2),
+                    horizontalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
+                ) {
+                    val chipColors = filterChipColors()
+                    FilterChip(
+                        selected = filterStatus == null,
+                        onClick = { filterStatus = null },
+                        label = { Text("All") },
+                        colors = chipColors,
+                    )
+                    FilterChip(
+                        selected = filterStatus == TransferStatus.SUCCESS,
+                        onClick = { filterStatus = TransferStatus.SUCCESS },
+                        label = { Text("Successful") },
+                        colors = chipColors,
+                    )
+                    FilterChip(
+                        selected = filterStatus == TransferStatus.FAILED,
+                        onClick = { filterStatus = TransferStatus.FAILED },
+                        label = { Text("Failed") },
+                        colors = chipColors,
+                    )
+                }
             }
 
-            // Search field
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space1),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = BeamsyncSpacing.space4, vertical = BeamsyncSpacing.space1),
                 placeholder = { Text("Search by filename...", style = MaterialTheme.typography.bodySmall) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                trailingIcon = if (searchQuery.isNotEmpty()) {
-                    { IconButton(onClick = { searchQuery = ""; focusManager.clearFocus() }) { Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(18.dp)) } }
-                } else null,
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(BeamsyncSpacing.iconDefault)) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        Row {
+                            if (filterStatus == null && searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery = ""; focusManager.clearFocus() }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(BeamsyncSpacing.iconDefault))
+                                }
+                            }
+                        }
+                    } else if (filterStatus != null) {
+                        IconButton(onClick = { filterStatus = null }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Clear filter", modifier = Modifier.size(BeamsyncSpacing.iconDefault))
+                        }
+                    }
+                },
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodySmall,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -215,17 +277,8 @@ fun HistoryScreen(
 
             HorizontalDivider()
 
-            // Animated tab content
-            AnimatedContent(
-                targetState = tabIndex,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally { it } + fadeIn()) togetherWith (slideOutHorizontally { -it } + fadeOut())
-                    } else {
-                        (slideInHorizontally { -it } + fadeIn()) togetherWith (slideOutHorizontally { it } + fadeOut())
-                    }
-                },
-                label = "tabContent",
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
                 if (filtered.isEmpty()) {
@@ -257,6 +310,7 @@ fun HistoryScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(horizontal = BeamsyncSpacing.space4),
                         verticalArrangement = Arrangement.spacedBy(BeamsyncSpacing.space2),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = BeamsyncSpacing.space2),
                     ) {
                         items(filtered, key = { it.id }) { record ->
                             val onDeleteRecord = remember(record) { { deleteRecord(record) } }
@@ -305,45 +359,85 @@ private fun HistoryItem(record: TransferRecord, onDelete: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(BeamsyncSpacing.space2))
+            .clip(RoundedCornerShape(BeamsyncSpacing.space3))
+            .border(
+                BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                RoundedCornerShape(BeamsyncSpacing.space3),
+            )
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .padding(start = BeamsyncSpacing.space3, top = BeamsyncSpacing.space3, bottom = BeamsyncSpacing.space3),
+            .padding(start = BeamsyncSpacing.space3, top = BeamsyncSpacing.space3, bottom = BeamsyncSpacing.space3, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = if (record.direction == TransferDirection.RECEIVE) Icons.Default.CloudDownload else Icons.Default.CloudUpload,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(32.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    if (record.direction == TransferDirection.RECEIVE)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.tertiaryContainer
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (record.direction == TransferDirection.RECEIVE) Icons.Default.CloudDownload else Icons.Default.CloudUpload,
+                contentDescription = null,
+                tint = if (record.direction == TransferDirection.RECEIVE)
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                else
+                    MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Spacer(Modifier.width(BeamsyncSpacing.space3))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = record.fileName,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                    contentDescription = null,
+                    tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(12.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = if (isSuccess) "Success" else "Failed",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                )
+                Spacer(Modifier.width(BeamsyncSpacing.space2))
+                Text(
+                    text = "\u00B7",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                )
+                Spacer(Modifier.width(BeamsyncSpacing.space2))
+                Text(
+                    text = formatSize(record.fileSize),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Text(
-                text = formatSize(record.fileSize) + " \u00B7 " + dateFormat.format(Date(record.timestamp)),
+                text = dateFormat.format(Date(record.timestamp)),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             )
         }
-        Icon(
-            imageVector = if (isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
-            contentDescription = null,
-            tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(BeamsyncSpacing.space1))
-        IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+        IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
             Icon(
                 imageVector = Icons.Default.Delete,
                 contentDescription = "Delete",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.size(18.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
     }

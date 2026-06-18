@@ -1,6 +1,8 @@
 package com.example.beamsyncmobile.ui.screens.home
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,16 +19,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -43,11 +50,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.beamsyncmobile.R
 import com.example.beamsyncmobile.ui.components.ConnectionOptionsSheet
 import com.example.beamsyncmobile.ui.theme.BeamsyncSpacing
@@ -87,26 +98,41 @@ fun NewHomeScreen(
                             .padding(horizontal = BeamsyncSpacing.space6)
                             .padding(bottom = BeamsyncSpacing.space4),
                     ) {
-                        Column {
-                            Text(
-                                text = "BeamSync",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_onboarding_logo),
+                                contentDescription = null,
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(40.dp),
                             )
-                            Text(
-                                text = "File Transfer",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
+                            Spacer(Modifier.width(BeamsyncSpacing.space3))
+                            Column {
+                                Text(
+                                    text = "BeamSync",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                                Text(
+                                    text = "File Transfer",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
                         }
                     }
 
                     Spacer(Modifier.height(BeamsyncSpacing.space4))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = BeamsyncSpacing.space6),
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                    )
+                    Spacer(Modifier.height(BeamsyncSpacing.space2))
 
                     DrawerItem(
                         icon = Icons.Default.History,
                         label = "History",
+                        subtitle = "View past transfers",
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToHistory()
@@ -115,6 +141,7 @@ fun NewHomeScreen(
                     DrawerItem(
                         icon = Icons.Default.Settings,
                         label = "Settings",
+                        subtitle = "Preferences & storage",
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToSettings()
@@ -123,47 +150,85 @@ fun NewHomeScreen(
                     DrawerItem(
                         icon = Icons.Default.Info,
                         label = "About",
+                        subtitle = "Version & credits",
                         onClick = {
                             scope.launch { drawerState.close() }
                             onNavigateToAbout()
                         },
                     )
+
+                    Spacer(Modifier.weight(1f))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = BeamsyncSpacing.space6)
+                            .padding(bottom = BeamsyncSpacing.space6),
+                    ) {
+                        Text(
+                            text = "BeamSync v1.0",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        )
+                    }
                 }
             }
         },
     ) {
-        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding().navigationBarsPadding()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                            MaterialTheme.colorScheme.background,
+                            MaterialTheme.colorScheme.background,
+                        ),
+                    )
+                )
+                .statusBarsPadding()
+                .navigationBarsPadding(),
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = BeamsyncSpacing.space8),
+                    .padding(horizontal = BeamsyncSpacing.space6),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(BeamsyncSpacing.space4))
-
                 Box(
                     modifier = Modifier
-                        .size(100.dp)
-                        .clip(RoundedCornerShape(BeamsyncSpacing.space4))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    contentAlignment = Alignment.CenterStart,
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_onboarding_logo),
-                        contentDescription = null,
-                        tint = androidx.compose.ui.graphics.Color.Unspecified,
-                        modifier = Modifier.size(72.dp),
-                    )
+                    IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Menu",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(BeamsyncSpacing.space4))
+                Spacer(Modifier.height(BeamsyncSpacing.space2))
+
+                Icon(
+                    painter = painterResource(R.drawable.ic_onboarding_logo),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(120.dp),
+                )
+
+                Spacer(Modifier.height(BeamsyncSpacing.space3))
 
                 Text(
                     text = "BeamSync",
-                    style = MaterialTheme.typography.displaySmall,
+                    style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                     textAlign = TextAlign.Center,
+                    letterSpacing = (-0.5).sp,
                 )
                 Text(
                     text = "Wireless File Transfers",
@@ -172,38 +237,47 @@ fun NewHomeScreen(
                     textAlign = TextAlign.Center,
                 )
 
-                Spacer(Modifier.height(BeamsyncSpacing.space10))
+                Spacer(Modifier.height(BeamsyncSpacing.space8))
 
-                BigActionButton(
+                ActionCard(
                     icon = Icons.Default.CloudDownload,
                     label = "Receive",
                     subtitle = "Download files from desktop",
-                    color = MaterialTheme.colorScheme.primary,
-                    trailingIcon = Icons.Default.CloudDownload,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    onContainerColor = MaterialTheme.colorScheme.onPrimary,
                     onClick = { showReceiveSheet = true },
                 )
-                Spacer(Modifier.height(BeamsyncSpacing.space4))
+                Spacer(Modifier.height(BeamsyncSpacing.space3))
 
-                BigActionButton(
+                ActionCard(
                     icon = Icons.Default.CloudUpload,
                     label = "Send",
                     subtitle = "Upload files to desktop",
-                    color = MaterialTheme.colorScheme.secondary,
-                    trailingIcon = Icons.Default.CloudUpload,
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    onContainerColor = MaterialTheme.colorScheme.onTertiary,
                     onClick = { showSendSheet = true },
                 )
-            }
 
-            // Hamburger
-            IconButton(
-                onClick = { scope.launch { drawerState.open() } },
-                modifier = Modifier.padding(start = BeamsyncSpacing.space2),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Menu,
-                    contentDescription = "Menu",
-                    tint = MaterialTheme.colorScheme.onBackground,
-                )
+                Spacer(Modifier.weight(1f))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(bottom = BeamsyncSpacing.space4),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(BeamsyncSpacing.space1))
+                    Text(
+                        text = "Both devices must be on the same network",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    )
+                }
             }
         }
     }
@@ -236,85 +310,101 @@ fun NewHomeScreen(
 }
 
 @Composable
-private fun BigActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+private fun ActionCard(
+    icon: ImageVector,
     label: String,
     subtitle: String,
-    color: androidx.compose.ui.graphics.Color,
-    trailingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: Color,
+    onContainerColor: Color,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(96.dp)
-            .clip(RoundedCornerShape(BeamsyncSpacing.space3))
-            .background(color.copy(alpha = 0.1f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = BeamsyncSpacing.space4),
-        verticalAlignment = Alignment.CenterVertically,
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(BeamsyncSpacing.space4),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        ),
     ) {
-        Box(
+        Column(
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(BeamsyncSpacing.space2))
-                .background(color),
-            contentAlignment = Alignment.Center,
+                .fillMaxWidth()
+                .padding(vertical = BeamsyncSpacing.space6),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(28.dp),
-            )
-        }
-        Spacer(Modifier.width(BeamsyncSpacing.space4))
-        Column(modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(containerColor),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = onContainerColor,
+                    modifier = Modifier.size(52.dp),
+                )
+            }
+            Spacer(Modifier.height(BeamsyncSpacing.space3))
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
+                color = MaterialTheme.colorScheme.onSurface,
             )
+            Spacer(Modifier.height(2.dp))
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        Icon(
-            imageVector = trailingIcon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.size(20.dp),
-        )
     }
 }
 
 @Composable
 private fun DrawerItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
+    subtitle: String,
     onClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = BeamsyncSpacing.space6, vertical = BeamsyncSpacing.space4),
+            .padding(horizontal = BeamsyncSpacing.space6, vertical = BeamsyncSpacing.space3),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(24.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Spacer(Modifier.width(BeamsyncSpacing.space3))
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Column {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }

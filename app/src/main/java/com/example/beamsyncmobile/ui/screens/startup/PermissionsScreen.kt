@@ -72,14 +72,33 @@ private data class WifiStatus(
 
 private fun getWifiStatus(context: Context): WifiStatus {
     val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    val network = cm.activeNetwork ?: return WifiStatus()
-    val caps = cm.getNetworkCapabilities(network) ?: return WifiStatus()
-    if (!caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) return WifiStatus()
-
     val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
-    val freq = wifiManager.connectionInfo.frequency
-    val noInternet = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-    return WifiStatus(isConnected = true, frequencyMHz = freq, isHotspot = noInternet)
+
+    val network = cm.activeNetwork
+    val caps = network?.let { cm.getNetworkCapabilities(it) }
+
+    // Case 1: Connected to WiFi as a client (phone joined a router/AP)
+    if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+        val freq = wifiManager.connectionInfo.frequency
+        val noInternet = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        return WifiStatus(isConnected = true, frequencyMHz = freq, isHotspot = noInternet)
+    }
+
+    // Case 2: Phone is the WiFi hotspot/AP (no TRANSPORT_WIFI because WiFi radio is in AP mode)
+    val isApEnabled = try {
+        val method = wifiManager.javaClass.getMethod("isWifiApEnabled")
+        method.invoke(wifiManager) as? Boolean ?: false
+    } catch (_: Exception) {
+        false
+    }
+    if (isApEnabled) {
+        // connectionInfo.frequency is the CLIENT frequency, not the AP frequency.
+        // The AP frequency cannot be queried reliably from a non-system app on API 34+.
+        // Return null so the band warning never fires on unreliable data.
+        return WifiStatus(isConnected = true, frequencyMHz = null, isHotspot = true)
+    }
+
+    return WifiStatus()
 }
 
 private fun frequencyLabel(freq: Int): String = when {

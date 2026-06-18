@@ -140,14 +140,19 @@ fun BeamsyncNavGraph() {
                     viewModel.connectToUrl(url)
                 }
             }
-            DownloadsScreen(viewModel = viewModel)
+            DownloadsScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable<Uploads>(
             enterTransition = { fadeIn(tween(0)) },
             exitTransition = { fadeOut(tween(0)) },
         ) {
-            UploadsScreen()
+            UploadsScreen(
+                onBack = { navController.popBackStack() },
+            )
         }
 
         composable<Settings>(
@@ -155,6 +160,7 @@ fun BeamsyncNavGraph() {
             exitTransition = { fadeOut(tween(0)) },
         ) {
             SettingsScreen(
+                onBack = { navController.popBackStack() },
                 onNavigateToAbout = { navController.navigate(About) },
             )
         }

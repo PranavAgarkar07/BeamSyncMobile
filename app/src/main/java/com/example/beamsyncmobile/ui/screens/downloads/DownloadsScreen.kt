@@ -1,6 +1,7 @@
 package com.example.beamsyncmobile.ui.screens.downloads
 
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.ExperimentalGetImage
@@ -27,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -88,7 +90,9 @@ import java.util.Locale
 fun DownloadsScreen(
     modifier: Modifier = Modifier,
     viewModel: ReceiveViewModel = viewModel(),
+    onBack: () -> Unit = {},
 ) {
+    BackHandler(onBack = onBack)
     val context = LocalContext.current
     val receiveState by viewModel.state.collectAsState()
     val receivedFiles by viewModel.receivedFiles.collectAsState()
@@ -129,6 +133,15 @@ fun DownloadsScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        }
+
         when (val state = receiveState) {
             is ReceiveState.Idle -> IdleContent(
                 filesCount = receivedFiles.size,
